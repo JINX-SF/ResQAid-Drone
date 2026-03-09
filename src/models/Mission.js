@@ -15,7 +15,22 @@ const MissionSchema = new mongoose.Schema({
   },
   startedAt :{type : Date, default : null},
   completedAt : {type : Date,default : null},
+
+payloadWeight: { type: Number, default: 0 },
+urgency: { type: String, default: "Low" },
+start: {
+  x: { type: Number, default: 0 },
+  y: { type: Number, default: 0 },
+  z: { type: Number, default: 0 },
+},
+destination: {
+  x: { type: Number, default: 0 },
+  y: { type: Number, default: 0 },
+  z: { type: Number, default: 0 },
+},
+
 },
 {timeseries : true}
 );
+
 module.exports = mongoose.model("Mission",MissionSchema);

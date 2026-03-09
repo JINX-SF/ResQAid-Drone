@@ -10,12 +10,35 @@ exports.createMission = async (req,res) => {
   const mission = await Mission.create(req.body);
   res.status(201).json({success : true , data : mission});
 };
-exports.getMissions = async (req,res) =>{
+/*exports.getMissions = async (req,res) =>{
   const missions = await Mission.find()
   .populate("drone")
   .populate("survivor")
   .sort({createdAt : -1});
   res.json({success : true , data : missions});
+};*/
+exports.getMissions = async (req, res) => {
+  const { status, page = 1, limit = 10 } = req.query;
+
+  const filter = {};
+  if (status) filter.status = status;
+
+  const missions = await Mission.find(filter)
+    .populate("drone")
+    .populate("survivor")
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(Number(limit));
+
+  const total = await Mission.countDocuments(filter);
+
+  res.json({
+    success: true,
+    total,
+    page: Number(page),
+    pages: Math.ceil(total / limit),
+    data: missions,
+  });
 };
 exports.getMission = async (req,res) => {
   const mission = await Mission.findById(req.params.id).populate("drone").populate("survivor");
