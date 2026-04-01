@@ -12,6 +12,6 @@ const SurvivorSchema = new mongoose.Schema({
   },
   notes : {type : String,default : ""},
 },
-{timeseries : true}
+{timestamps: true}
 );
 module.exports = mongoose.model("Survivor",SurvivorSchema);
