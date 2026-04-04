@@ -33,7 +33,7 @@ async function start() {
 
     setInterval(() => {
       runSimulation(io);
-    }, 5000);
+    }, 10000);
 
   } catch (err) {
     console.error("❌ Failed to start server:", err);

@@ -56,7 +56,7 @@ DroneSchema.methods.updatePosition = function (newPosition) {
 // drains battery and automatically sends drone to maintenance if too low
 DroneSchema.methods.consumeBattery = function (amount) {
   this.battery = Math.max(0, this.battery - amount);
-  if (this.battery <= 10) {
+  if (this.battery <= 15) {
     this.status = "maintenance";
   }
 };

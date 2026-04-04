@@ -1,4 +1,5 @@
 const Mission = require("../models/Mission");
+ const { isFlyable } = require("../utils/weather");
 const Drone = require("../models/Drone");
 const { chooseBestDrone, prioritizeMissions } = require("../utils/scoring");
 const { getWeatherAt } = require("./weatherService");
@@ -31,7 +32,6 @@ async function runSimulation(io) {
          condition=${weather.condition}`);
 
       // if weather is too dangerous, skip this mission for now
-      const { isFlyable } = require("../utils/weather");
       if (!isFlyable(weather)) {
         console.log(`⛈️ Weather unsafe for mission ${mission._id}, skipping`);
         continue;
