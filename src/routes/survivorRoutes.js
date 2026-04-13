@@ -1,10 +1,11 @@
 const router = require("express").Router();
 const ctrl = require("../controllers/survivorControllers");
+const { protect, restrictTo } = require("../middleware/authMiddleware");
 
-router.post("/", ctrl.createSurvivor);
-router.get("/", ctrl.getSurvivors);
-router.get("/:id", ctrl.getSurvivor);
-router.put("/:id", ctrl.updateSurvivor);
-router.delete("/:id", ctrl.deleteSurvivor);
+router.post("/",protect, ctrl.createSurvivor);
+router.get("/",protect, ctrl.getSurvivors);
+router.get("/:id",protect, ctrl.getSurvivor);
+router.put("/:id",protect, ctrl.updateSurvivor);
+router.delete("/:id",protect,restrictTo("admin"), ctrl.deleteSurvivor);
 
 module.exports = router;
