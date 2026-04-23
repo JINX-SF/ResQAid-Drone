@@ -50,7 +50,8 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "/api/auth/google/callback",
+        /*callbackURL: "/api/auth/google/callback",*/
+        callbackURL: "http://localhost:5000/api/auth/google/callback",
         scope: ["profile", "email"],
       },
       async (accessToken, refreshToken, profile, done) => {
@@ -103,7 +104,8 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
       {
         clientID: process.env.FACEBOOK_APP_ID,
         clientSecret: process.env.FACEBOOK_APP_SECRET,
-        callbackURL: "/api/auth/facebook/callback",
+        /*callbackURL: "/api/auth/facebook/callback",*/
+        callbackURL: "http://localhost:5000/api/auth/facebook/callback",
         profileFields: ["id", "displayName", "emails"],
       },
       async (accessToken, refreshToken, profile, done) => {
