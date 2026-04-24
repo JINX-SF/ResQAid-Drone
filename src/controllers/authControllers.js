@@ -664,3 +664,31 @@ exports.changePassword = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.birthday = req.body.birthday || user.birthday;
+    user.gender = req.body.gender || user.gender;
+    user.phone = req.body.phone || user.phone;
+    user.location = req.body.location || user.location;
+
+    user.emergencyContact = req.body.emergencyContact || user.emergencyContact;
+    user.medicalInfo = req.body.medicalInfo || user.medicalInfo;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      user,
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};

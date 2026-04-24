@@ -12,6 +12,7 @@ const {
   resetPassword,
   getMe,
   changePassword,
+    updateProfile,
 } = require("../controllers/authControllers");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -32,5 +33,7 @@ router.get("/facebook/callback", facebookCallback);
 
 router.get("/me", protect, getMe);
 router.patch("/change-password", protect, changePassword);
+
+router.patch("/profile", protect, updateProfile);
 
 module.exports = router;
