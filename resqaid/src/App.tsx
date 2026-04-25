@@ -14,6 +14,12 @@ import Controle from "./pages/Controle";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import VerifyEmail from "./pages/VerifyEmail";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ConfirmationPage from "./pages/ConfirmationPage";
+import DronesPage from "./pages/DronesPage";
+import EmergencyRequestsPage from "./pages/EmergencyRequestsPage";
+import RequestPage from "./pages/RequestPage";
+import UsersPage from "./pages/UsersPage";
+
 
 const queryClient = new QueryClient();
 
@@ -25,6 +31,12 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/confirmatiopage" element={<ConfirmationPage />} />
+          <Route path="/dronespage" element={<DronesPage />} />
+          <Route path="/emergencyrequestspage" element={<EmergencyRequestsPage />} />
+          <Route path="/requestpage" element={<RequestPage />} />
+          <Route path="/userspage" element={<UsersPage />} />
+
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/infos" element={<Infos />} />
