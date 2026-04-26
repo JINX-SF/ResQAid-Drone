@@ -1,18 +1,20 @@
-import droneSrc from "@/assets/drone.png";
+import { useState } from "react";
+import droneSrc from "@/assets/Drn.webp";
 
-type DroneIconProps = {
-  className?: string;
-  rotate?: boolean;
-};
+export default function DroneIcon({ className = "", rotate = false }) {
+  const [hover, setHover] = useState(false);
 
-export default function DroneIcon({ className = "", rotate = false }: DroneIconProps) {
   return (
     <img
       src={droneSrc}
       alt=""
       aria-hidden="true"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       className={`object-contain ${rotate ? "-rotate-45" : ""} ${className}`}
-      style={{ filter: "brightness(0) invert(1)" }}
+      style={{
+        filter: hover ? "brightness(0) invert(1)" : "brightness(0)"
+      }}
     />
   );
 }

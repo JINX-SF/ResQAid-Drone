@@ -1,4 +1,4 @@
-import { MapPin, Phone, Mail,LogOut , CheckCircle, AlertTriangle, User, Shield, Heart, Clock, Pencil } from "lucide-react";
+import { MapPin, Phone, Mail,LogOut , Home,CheckCircle,ChevronRight, AlertTriangle, User, Shield, Heart, Clock, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import rescueBg from "@/assets/rescue-bg.jpg";
 
 import { useEffect, useState } from "react";
 import API from "@/api"
+import { Link } from "react-router-dom";
 
 
 
@@ -31,7 +32,15 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: `url(${rescueBg})` }}>
       <div className="min-h-screen bg-black/40">
-        <Navbar />
+        <nav className="absolute mb-12 left-0 right-0 top-0 z-20 flex items-center mb-11 justify-between px-6 py-4 md:px-12 ">
+        <h2 className="text-2xl font-bold text-primary-foreground drop-shadow-lg">ResQAid</h2>
+        
+        <div className="hidden items-center gap-8 md:flex">
+          
+            <Link to="/" className="gap-2  flex justify-center items-center hover:border-b py-1 px-2 rounded-md text-white"><Home  className="w-3.5 h-3.5 " />  Home <ChevronRight className="w-3.5 h-3.5 "/></Link>
+        
+            </div>
+      </nav>
       <div className="max-w-5xl mx-auto px-6 py-8 pt-28">
         {/* Profile Header */}
         <div className="flex items-center gap-6 mb-8">

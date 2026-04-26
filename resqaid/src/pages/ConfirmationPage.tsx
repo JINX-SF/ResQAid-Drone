@@ -9,18 +9,18 @@ export default function ConfirmationPage() {
           <Check className="h-12 w-12 text-primary-foreground" strokeWidth={3} />
         </div>
 
-        <h1 className="mb-2 text-4xl font-bold tracking-tight text-foreground">
+        <h1 className="mb-2 text-4xl font-bold text-white tracking-tight text-foreground">
           Emergency Request confirmed
         </h1>
-        <p className="mb-8 text-sm text-foreground/80">
+        <p className="mb-8 text-sm text-white/70">
           your request has been received and our system is responding immediatly
         </p>
 
-        <Glass className="max-w-2xl px-10 py-6">
-          <p className="mb-3 text-sm text-foreground/90">
+        <Glass className="max-w-2xl px-10 py-6 text-white/60">
+          <p className="mb-3 text-sm ">
             A rescue drone is being prepared and sent on the way to your location
           </p>
-          <p className="text-sm text-foreground/90">
+          <p className="text-sm ">
             Please stay calm and keep your device nearby for updates
           </p>
         </Glass>

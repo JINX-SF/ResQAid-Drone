@@ -12,6 +12,7 @@ import bg from "@/assets/rescue-bg.jpg";
 import DroneIcon from "../components/DroneIcon";
 import Sidebar from "./Sidebar";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const navItems = [
   { label: "Navigation", to: "/request" },
@@ -53,8 +54,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       className="relative min-h-screen w-full bg-cover bg-center bg-no-repeat text-foreground"
       style={{ backgroundImage: `url(${bg})` }}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-background/60 via-background/40 to-background/70" />
-
+      <div className="fixed inset-0 bg-black/40" />
       <div className="relative z-10 flex min-h-screen">
         <Sidebar
           collapsed={sidebarCollapsed}
@@ -63,21 +63,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 px-6 py-5">
           <header className="mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <h1 className="text-xl font-bold tracking-wide text-foreground">ResQAid</h1>
-              <nav className="flex items-center gap-6">
-                {navItems.map((item) => (
-                  <a
-                    key={item.label}
-                    href={item.to}
-                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    {item.label}
-                  </a>
-                ))}
-              </nav>
-            </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 ml-auto">
               <button
                 className="text-muted-foreground hover:text-destructive"
                 aria-label="Notifications"
@@ -88,7 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-warning/30 text-warning"
                 aria-label="Profile"
               >
-                <User className="h-5 w-5" />
+                <Link to={"/profile"}> <User className="h-5 w-5" /></Link>
               </button>
             </div>
           </header>

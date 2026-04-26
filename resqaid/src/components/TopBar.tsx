@@ -1,4 +1,5 @@
 import { Battery, Gauge, Mountain, Signal, Plane, Bell, User } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const stats = [
   { icon: Plane, label: "Drone", value: "DR-08" },
@@ -24,7 +25,7 @@ const TopBar = () => (
           <Bell size={18} className="text-gray-300" />
         </button>
         <div className="w-9 h-9 rounded-full bg-green-600/20 border border-primary/40 flex items-center justify-center">
-          <User size={18} className="text-green-600" />
+          <Link to={"/profile"}><User size={18} className="text-green-600" /></Link>
         </div>
       </div>
     </div>
