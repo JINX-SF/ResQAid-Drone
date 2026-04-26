@@ -73,6 +73,7 @@ const UserSchema = new mongoose.Schema(
       default: "prefer_not_to_say",
     },
     phone:    { type: String, trim: true, default: "" },
+    phone2:    { type: String, trim: true, default: "" },
     location: { type: String, trim: true, default: "" },
 
     emergencyContact: { type: EmergencyContactSchema, default: () => ({}) },

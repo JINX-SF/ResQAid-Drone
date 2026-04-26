@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff ,Check , User , CircleUser } from "lucide-react";
 import rescueBg from "@/assets/rescue-bg.jpg";
@@ -31,6 +31,32 @@ const [allergies, setAllergies] = useState("");
 const [height, setHeight] = useState("");
 const [weight, setWeight] = useState("");
 
+useEffect(() => {
+  const fetchUser = async () => {
+    try {
+      const res = await API.get("/auth/me");
+      const user = res.data.user;
+
+      // 👉 PREFILL DATA
+      setBirthday(user.birthday ? user.birthday.split("T")[0] : "");
+      setGender(user.gender || "");
+      setPhone(user.phone || "");
+      setLocation(user.location || "");
+
+      setContactName(user.emergencyContact?.name || "");
+      setContactPhone(user.emergencyContact?.phone || "");
+
+      setBloodType(user.medicalInfo?.bloodType || "");
+      setAllergies(user.medicalInfo?.allergies || "");
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  fetchUser();
+}, []);
+
   /*const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     navigate("/profile");
@@ -55,6 +81,7 @@ const [weight, setWeight] = useState("");
         allergies,
       },
     });
+    alert("Profile updated successfully ✅");
 
     navigate("/profile");
 
@@ -62,6 +89,9 @@ const [weight, setWeight] = useState("");
     alert("Failed to save profile");
   }
 };
+
+
+
   return (
     <div
       className="flex min-h-screen items-center justify-center p-4"
