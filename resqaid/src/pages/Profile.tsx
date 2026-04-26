@@ -8,10 +8,12 @@ import rescueBg from "@/assets/rescue-bg.jpg";
 import { useEffect, useState } from "react";
 import API from "@/api"
 
+import { useNavigate } from "react-router-dom";
+
 
 
 const Profile = () => {
-
+const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -42,11 +44,23 @@ const Profile = () => {
             <h1 className="text-2xl text-white font-bold">{user?.name}</h1>
             <p className="text-sm text-muted-foreground">Emergency assistance user · Oran, Algeria</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-2 bg-red-800/70 hover:bg-red-700/70 text-white">
-            <LogOut  className="w-3.5 h-3.5" />
-            Sign out
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2 bg-green-800/70 text-white">
+
+         <Button
+  variant="outline"
+  size="sm"
+  className="gap-2 bg-red-800/70 hover:bg-red-700/70 text-white"
+>
+  <LogOut className="w-3.5 h-3.5" />
+  Sign out
+</Button>
+
+<Button
+  onClick={() => navigate("/infos")}
+  variant="outline"
+  size="sm"
+  className="gap-2 bg-green-800/70 text-white"
+>
+
             <Pencil className="w-3.5 h-3.5" />
             Edit Profile
           </Button>
@@ -67,7 +81,7 @@ const Profile = () => {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 {[
                   ["Full Name", user.name],
-                  ["Birthday", user.birthday|| "—"],
+                  ["Birthday", new Date(user.birthday).toISOString().split("T")[0]|| "—"],
                   ["Gender", user.gender|| "—"],
                   ["Phone", user.phone|| "—"],
                    ["Phone2", user.phone2|| "—"],

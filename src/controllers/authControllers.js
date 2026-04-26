@@ -677,6 +677,9 @@ exports.updateProfile = async (req, res, next) => {
     user.gender = req.body.gender || user.gender;
     user.phone = req.body.phone || user.phone;
     user.location = req.body.location || user.location;
+    user.phone2 = req.body.phone2 || user.phone2;
+user.height = req.body.height || user.height;
+user.weight = req.body.weight || user.weight;
 
     user.emergencyContact = req.body.emergencyContact || user.emergencyContact;
     user.medicalInfo = req.body.medicalInfo || user.medicalInfo;
