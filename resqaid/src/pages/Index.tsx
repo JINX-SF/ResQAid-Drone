@@ -63,10 +63,10 @@ const Index = () => {
           backgroundPosition: "center top",
         }}
       >
-        {/* NAV */}
+        
         <Navbar />
 
-        {/* HERO */}
+        
         <section className="relative flex min-h-[85vh] items-center overflow-hidden">
           <img
             src={landingDrone}
@@ -100,7 +100,6 @@ const Index = () => {
           </div>
         </section>
 
-        {/* FEATURES */}
         <section id="features" className="mx-6 mt-10">
           <div className="absolute inset-0" />
           <div className="relative z-10 ">
@@ -129,7 +128,6 @@ const Index = () => {
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
         <section className="relative py-20">
           <div className="absolute inset-0 " />
           <div className="relative z-10 ">

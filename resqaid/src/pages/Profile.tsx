@@ -1,4 +1,4 @@
-import { MapPin, Phone, Mail, CheckCircle, AlertTriangle, User, Shield, Heart, Clock, Pencil } from "lucide-react";
+import { MapPin, Phone, Mail,LogOut , CheckCircle, AlertTriangle, User, Shield, Heart, Clock, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -44,9 +44,23 @@ const navigate = useNavigate();
             <h1 className="text-2xl text-white font-bold">{user?.name}</h1>
             <p className="text-sm text-muted-foreground">Emergency assistance user · Oran, Algeria</p>
           </div>
-          <Button
-           onClick={() => navigate("/infos")}
-           variant="outline" size="sm" className="gap-2 bg-green-800/70 text-white">
+
+         <Button
+  variant="outline"
+  size="sm"
+  className="gap-2 bg-red-800/70 hover:bg-red-700/70 text-white"
+>
+  <LogOut className="w-3.5 h-3.5" />
+  Sign out
+</Button>
+
+<Button
+  onClick={() => navigate("/infos")}
+  variant="outline"
+  size="sm"
+  className="gap-2 bg-green-800/70 text-white"
+>
+
             <Pencil className="w-3.5 h-3.5" />
             Edit Profile
           </Button>
