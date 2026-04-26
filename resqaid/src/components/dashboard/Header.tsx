@@ -1,4 +1,5 @@
 import { Search, User, Bell } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Header = () => {
   return (
@@ -13,7 +14,7 @@ const Header = () => {
         />
       </div>
       <div className="flex-1 flex justify-end items-center gap-4">
-        <User className="w-6 h-6 text-foreground/70 cursor-pointer" />
+        <Link to={"/profile"}><User className="w-6 h-6 text-foreground/70 cursor-pointer" /></Link>
         <Bell className="w-6 h-6 text-foreground/70 cursor-pointer" />
       </div>
     </header>

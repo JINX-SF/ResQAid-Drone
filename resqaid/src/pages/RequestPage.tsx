@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import bg from "@/assets/rescue-bg.jpg";
 import DroneIcon from "../components/DroneIcon";
+import { Link } from "react-router-dom";
+import Sidebar from "@/components/Sidebar";
+import { useState } from "react";
 
 function Glass({
   children,
@@ -65,56 +68,30 @@ export default function RequestPage() {
     { id: "#04", date: "24/03/2026", status: "rejected", label: "rejected" },
   ];
 
+const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   return (
+    
     <div
       className="relative min-h-screen w-full bg-cover bg-center bg-no-repeat text-foreground"
       style={{ backgroundImage: `url(${bg})` }}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-background/60 via-background/40 to-background/70" />
+      <div className="fixed inset-0 bg-black/40" />
 
       <div className="relative z-10 flex min-h-screen">
-        <aside className="flex w-14 flex-col items-center gap-6 border-r border-white/10 bg-black/20 py-6 backdrop-blur-xl">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20 text-primary font-bold">
-            R
-          </div>
-          <nav className="flex flex-col items-center gap-5 pt-4">
-            {sideIcons.map((Icon, i) => (
-              <button
-                key={i}
-                className="text-muted-foreground transition-colors hover:text-primary"
-                aria-label={`nav-${i}`}
-              >
-                <Icon className="h-5 w-5" />
-              </button>
-            ))}
-          </nav>
-          <button className="mt-auto flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-muted-foreground hover:text-primary">
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </aside>
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+  
 
         <main className="flex-1 px-6 py-5">
           <header className="mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <h1 className="text-xl font-bold tracking-wide text-foreground">ResQAid</h1>
-              <nav className="flex items-center gap-6">
-                {navItems.map((item) => (
-                  <a
-                    key={item}
-                    href="#"
-                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    {item}
-                  </a>
-                ))}
-              </nav>
-            </div>
-            <div className="flex items-center gap-4">
+            
+            <div className="flex items-center gap-4 ml-auto">
               <button className="text-muted-foreground hover:text-primary" aria-label="Notifications">
                 <Bell className="h-5 w-5" />
               </button>
               <button className="text-primary" aria-label="Profile">
-                <User className="h-5 w-5" />
+                <Link to={"/profile"}><User className="h-5 w-5" />
+                </Link>
+                
               </button>
             </div>
           </header>
@@ -126,7 +103,7 @@ export default function RequestPage() {
               </h2>
               <div className="flex items-center gap-6">
                 <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-full border-[3px] border-primary bg-black/40 shadow-[0_0_30px_rgba(120,220,140,0.35)]">
-                  <DroneIcon className="h-14 w-14" />
+                  <DroneIcon className="h-14  w-14" />
                 </div>
                 <div className="flex-1 space-y-3 text-sm">
                   {[

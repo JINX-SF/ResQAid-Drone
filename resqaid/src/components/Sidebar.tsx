@@ -1,12 +1,14 @@
-import { Plane , CheckSquare, Users, Sliders, Target, Settings, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plane , CheckSquare,LayoutDashboard,PanelsTopLeft ,Blocks ,Gauge ,Grid3x3 , Users, Sliders, Target, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import drone from "@/assets/drone.png"
+import Drone from "@/components/DroneIcon"
 
 const navItems = [
-  { icon: Plane, label: "Drones" },
+  { icon: Drone, label: "Drone" },
   { icon: CheckSquare, label: "Requests" },
   { icon: Users, label: "Users" },
   { icon: Sliders, label: "Control panel" },
+  { icon: LayoutDashboard  , label: "Dashboard" },
   { icon: Target, label: "Missions" },
   { icon: Settings, label: "Settings" },
 ];
