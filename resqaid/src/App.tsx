@@ -18,6 +18,7 @@ import ConfirmationPage from "./pages/ConfirmationPage";
 import DronesPage from "./pages/DronesPage";
 import EmergencyRequestsPage from "./pages/EmergencyRequestsPage";
 import RequestPage from "./pages/RequestPage";
+import RequestAssistancePage from "@/pages/RequestAssistancePage"
 import UsersPage from "./pages/UsersPage";
 
 
@@ -32,9 +33,12 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/confirmatiopage" element={<ConfirmationPage />} />
+
           <Route path="/dronespage" element={<DronesPage />} />
           <Route path="/emergencyrequestspage" element={<EmergencyRequestsPage />} />
-          <Route path="/requestpage" element={<RequestPage />} />
+          <Route path="/requestpage" element={<RequestPage />} /> 
+          <Route path="/request-assistance" element={<RequestAssistancePage />} />
+
           <Route path="/userspage" element={<UsersPage />} />
 
           <Route path="/login" element={<Login />} />
