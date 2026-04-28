@@ -29,7 +29,7 @@ function KindIcon({ kind }: { kind: Kind }) {
     case "flood":
       return <Droplet className="h-6 w-6 text-blue-400" />;
     case "building":
-      return <Building2 className="h-6 w-6 text-foreground/80" />;
+      return <Building2 className="h-6 w-6 text-white/80" />;
     case "medical":
       return (
         <span className="flex h-6 w-6 items-center justify-center rounded bg-white/90 text-destructive">
@@ -42,7 +42,7 @@ function KindIcon({ kind }: { kind: Kind }) {
 function UrgencyPill({ urgency }: { urgency: Urgency }) {
   const styles: Record<Urgency, string> = {
     critical: "bg-destructive text-destructive-foreground",
-    minor: "bg-warning text-warning-foreground",
+    minor: "bg-orange-500 text-white",
     low: "bg-primary text-primary-foreground",
   };
   return (
@@ -59,7 +59,7 @@ export default function EmergencyRequestsPage() {
     <AppShell>
       <Glass className="overflow-hidden">
         <div className="bg-black/40 px-6 py-4">
-          <h2 className="text-2xl font-semibold text-foreground">Emergency requests</h2>
+          <h2 className="text-2xl font-semibold text-white/80">Emergency requests</h2>
         </div>
         <div className="grid grid-cols-[0.7fr_1.5fr_1fr_1fr_1.2fr_1fr] gap-4 border-b border-white/10 bg-black/30 px-6 py-3 text-xs uppercase tracking-wider text-muted-foreground">
           <div>ID</div>
@@ -69,7 +69,7 @@ export default function EmergencyRequestsPage() {
           <div>Location</div>
           <div className="text-right">Actions</div>
         </div>
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y text-white/70 divide-white/5">
           {reqs.map((r, i) => (
             <li
               key={i}
@@ -83,8 +83,8 @@ export default function EmergencyRequestsPage() {
               <div>
                 <UrgencyPill urgency={r.urgency} />
               </div>
-              <div className="text-foreground/80">{r.time}</div>
-              <div className="text-muted-foreground">................</div>
+              <div className="text-white/70">{r.time}</div>
+              <div className="text-white/70">................</div>
               <div className="flex justify-end">
                 <button className="rounded-lg bg-primary/80 px-6 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary">
                   review
