@@ -18,7 +18,7 @@ import ConfirmationPage from "./pages/ConfirmationPage";
 import DronesPage from "./pages/DronesPage";
 import EmergencyRequestsPage from "./pages/EmergencyRequestsPage";
 import RequestPage from "./pages/RequestPage";
-import RequestAssistancePage from "@/pages"
+import RequestAssistancePage from "@/pages/RequestAssistancePage"
 import UsersPage from "./pages/UsersPage";
 
 

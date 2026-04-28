@@ -1,8 +1,11 @@
 import { AlertTriangle, Plane, Flame } from "lucide-react";
+import DroneIcon from "./DroneIcon";
 
 const activities = [
   { icon: <span className="bg-red-700 text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded">SOS</span>, title: "New SOS request received", desc: "2 hikers missing near ridge" },
-  { icon: <Plane size={16} className="text-green-600 text-glow-green" />, title: "Drone DR-08 launched", desc: "Heading to search area" },
+  { icon: <DroneIcon  className="h-4 w-4 text-green-600 text-glow-green" style={{
+  filter: "brightness(0) saturate(100%) sepia(100%) hue-rotate(90deg) brightness(1.2)"
+}}/>, title: "Drone DR-08 launched", desc: "Heading to search area" },
   { icon: <Flame size={16} className="text-orange-500" />, title: "Thermal target locked", desc: "3 heat sources detected" },
 ];
 
