@@ -47,7 +47,7 @@ export default function DronesPage() {
     <AppShell>
       <Glass className="overflow-hidden">
         <div className="flex items-center justify-between bg-black/40 px-6 py-4">
-          <h2 className="text-2xl font-semibold text-foreground">All drones</h2>
+          <h2 className="text-2xl font-semibold text-white/80">All drones</h2>
           <button className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
             + Add drone
           </button>
@@ -60,7 +60,7 @@ export default function DronesPage() {
           <div>Location</div>
           <div className="text-right">Actions</div>
         </div>
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y text-white/70 divide-white/5">
           {drones.map((d) => (
             <li
               key={d.id}
@@ -72,7 +72,7 @@ export default function DronesPage() {
                 <StatusPill status={d.status} />
               </div>
               <div>{d.battery}%</div>
-              <div className="flex items-center gap-2 text-foreground/80">
+              <div className="flex items-center gap-2 text-white/70">
                 <MapPin className="h-4 w-4 text-primary" />
                 <span>Algeria,oran</span>
               </div>
@@ -80,8 +80,8 @@ export default function DronesPage() {
                 <button className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/30 text-muted-foreground hover:text-destructive">
                   <Trash2 className="h-4 w-4" />
                 </button>
-                <button className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/30 text-muted-foreground hover:text-primary">
-                  <Pencil className="h-4 w-4" />
+                <button className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/30 text-muted-foreground hover:text-blue-600">
+                  <Pencil className="h-4 hover:text-blue-400 w-4" />
                 </button>
               </div>
             </li>

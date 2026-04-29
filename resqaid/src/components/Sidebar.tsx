@@ -2,15 +2,16 @@ import { Plane , CheckSquare,LayoutDashboard,PanelsTopLeft ,Blocks ,Gauge ,Grid3
 import { cn } from "@/lib/utils";
 import drone from "@/assets/drone.png"
 import Drone from "@/components/DroneIcon"
+import { Link } from "react-router-dom";
 
 const navItems = [
-  { icon: Drone, label: "Drone" },
-  { icon: CheckSquare, label: "Requests" },
-  { icon: Users, label: "Users" },
-  { icon: Sliders, label: "Control panel" },
-  { icon: LayoutDashboard  , label: "Dashboard" },
-  { icon: Target, label: "Missions" },
-  { icon: Settings, label: "Settings" },
+  { icon: Drone, label: "Drone" ,link:"/dronespage"},
+  { icon: CheckSquare, label: "Requests" ,link:"/requestpage"},
+  { icon: Users, label: "Users" ,link:"/userspage"},
+  { icon: Sliders, label: "Control panel" ,link:"/controle"},
+  { icon: LayoutDashboard  , label: "Dashboard",link:"/dashboard" },
+  { icon: Target, label: "Missions" ,link:""},
+  { icon: Settings, label: "Settings",link:"" },
 ];
 
 interface SidebarProps {
@@ -39,6 +40,7 @@ const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
 
       <nav className="flex flex-col  gap-1 flex-1">
         {navItems.map((item) => (
+          <Link to={item.link}>  
           <button
             key={item.label}
             className={cn(
@@ -50,7 +52,9 @@ const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
             <item.icon className="w-5 h-5 shrink-0" />
             {!collapsed && item.label}
           </button>
+          </Link>
         ))}
+
       </nav>
 
       <button

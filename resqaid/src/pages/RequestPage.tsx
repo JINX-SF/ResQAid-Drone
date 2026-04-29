@@ -97,8 +97,8 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
           </header>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-            <Glass className="p-5 lg:col-span-2">
-              <h2 className="mb-4 text-sm font-medium lowercase tracking-wide text-foreground/90">
+            <Glass className="p-5 lg:col-span-2 ">
+              <h2 className="mb-4 text-sm font-medium lowercase text-black tracking-wide ">
                 current request status
               </h2>
               <div className="flex items-center gap-6">
@@ -124,8 +124,8 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
               </div>
             </Glass>
 
-            <Glass className="p-5">
-              <h2 className="mb-4 text-sm font-medium text-foreground/90">My Profile</h2>
+            <Glass className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4 space-y-3">
+              <h2 className="mb-4 text-sm font-medium text-black">My Profile</h2>
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/30 to-warning/30">
                   <User className="h-6 w-6 text-primary" />
@@ -149,7 +149,7 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
             </Glass>
 
             <Glass className="p-5">
-              <h2 className="mb-4 text-sm font-medium text-foreground/90">my requests:</h2>
+              <h2 className="mb-4 text-sm font-medium text-black">my requests:</h2>
               <ul className="space-y-2">
                 {requests.map((r) => (
                   <li
@@ -167,7 +167,7 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
             </Glass>
 
             <Glass className="p-5">
-              <h2 className="mb-4 text-sm font-medium text-foreground/90">Last Request Summary:</h2>
+              <h2 className="mb-4 text-sm font-medium text-black">Last Request Summary:</h2>
               <div className="space-y-4 text-sm">
                 {[
                   ["mission type", "Search & rescue"],
@@ -188,7 +188,7 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
             </Glass>
 
             <Glass className="p-5">
-              <h2 className="mb-4 text-sm font-medium text-foreground/90">Emergency Contact</h2>
+              <h2 className="mb-4 text-sm font-medium text-black">Emergency Contact</h2>
               <div className="text-lg font-semibold">Ahemed Ali</div>
               <div className="my-4 h-px bg-white/10" />
               <div className="flex items-center gap-3 text-sm">
@@ -198,7 +198,7 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
             </Glass>
 
             <Glass className="p-5 lg:col-span-2">
-              <h2 className="mb-4 text-sm font-medium text-foreground/90">Mission report</h2>
+              <h2 className="mb-4 text-sm font-medium text-black">Mission report</h2>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between rounded-lg bg-black/20 px-3 py-2">
                   <span>Decision</span>
@@ -214,7 +214,7 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
             </Glass>
 
             <Glass className="p-5">
-              <h2 className="mb-2 text-sm font-medium text-foreground/90">Feedback</h2>
+              <h2 className="mb-2 text-sm font-medium text-black">Feedback</h2>
               <p className="mb-4 text-xs text-muted-foreground">
                 how was your experience with our service?
               </p>

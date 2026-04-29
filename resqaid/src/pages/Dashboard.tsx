@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Sidebar from "@/components/dashboard/Sidebar";
+import Sidebar from "@/components/Sidebar";
 import Header from "@/components/dashboard/Header";
 import StatsCards from "@/components/dashboard/StatsCards";
 import DroneOverview from "@/components/dashboard/DroneOverview";
