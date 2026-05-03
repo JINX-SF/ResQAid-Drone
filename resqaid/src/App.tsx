@@ -20,6 +20,9 @@ import EmergencyRequestsPage from "./pages/EmergencyRequestsPage";
 import RequestPage from "./pages/RequestPage";
 import RequestAssistancePage from "@/pages/RequestAssistancePage"
 import UsersPage from "./pages/UsersPage";
+import MissionsPage from "./pages/MissionsPage";
+import Forgot from "./pages/forgot";
+import Reset from "./pages/reset";
 
 
 const queryClient = new QueryClient();
@@ -33,6 +36,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/confirmatiopage" element={<ConfirmationPage />} />
+          <Route path="/forgot" element={<Forgot />} />
+          <Route path="/reset" element={<Reset />} />
 
           <Route path="/dronespage" element={<DronesPage />} />
           <Route path="/emergencyrequestspage" element={<EmergencyRequestsPage />} />
@@ -45,6 +50,8 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/infos" element={<Infos />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/missionsPage" element={<MissionsPage />} />
+
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
           <Route path="/oauth-success" element={<OAuthSuccess />} />
