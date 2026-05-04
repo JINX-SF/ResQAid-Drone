@@ -25,9 +25,13 @@ async function start() {
         origin: "*",
       },
     });
+      app.set("io", io); 
 
     io.on("connection", (socket) => {
       console.log("Client connected:", socket.id);
+       socket.on("disconnect", () => {          // ← ADD THESE 3 LINES
+    console.log("Client disconnected:", socket.id);
+  });
     });
 
     server.listen(PORT,async () => {

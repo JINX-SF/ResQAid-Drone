@@ -2,9 +2,9 @@ const mongoose = require("mongoose");
 
 const MissionSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true, trim: true },
+   title: { type: String, required: true, trim: true },
 
-    type: {
+    type:  {
       type: String,
       enum: ["SAR", "delivery", "general"],
       default: "general",

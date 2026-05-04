@@ -9,3 +9,6 @@ router.put("/:id", protect, ctrl.updateDrone);
 router.delete("/:id", protect, restrictTo("admin"), ctrl.deleteDrone);
 
 module.exports = router;
+router.post("/:id/goto",           protect, ctrl.gotoLocation);
+router.post("/:id/return-home",    protect, ctrl.returnHome);
+router.post("/:id/emergency-stop", protect, ctrl.emergencyStop);
