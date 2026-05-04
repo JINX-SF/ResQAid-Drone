@@ -171,31 +171,6 @@ const navigate = useNavigate();
             </CardContent>
           </Card>
 
-          {/* Recent Requests */}
-          <Card className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4 space-y-3 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex text-white items-center gap-2 text-base font-semibold">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-green-800" />
-                </div>
-                Recent Requests
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {[
-                { type: "Flood", date: "Jan 20, 2025" },
-                { type: "Earthquake", date: "Jan 05, 2025" },
-              ].map((req) => (
-                <div key={req.type} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-700" />
-                    <span className="text-sm text-muted-foreground font-medium">{req.type}</span>
-                  </div>
-                  <span className="text-xs text-white">{req.date}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
         </div>
 
         {/* Emergency Button */}

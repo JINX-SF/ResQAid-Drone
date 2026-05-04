@@ -10,7 +10,7 @@ const navItems = [
   { icon: Users, label: "Users" ,link:"/userspage"},
   { icon: Sliders, label: "Control panel" ,link:"/controle"},
   { icon: LayoutDashboard  , label: "Dashboard",link:"/dashboard" },
-  { icon: Target, label: "Missions" ,link:""},
+  { icon: Target, label: "Missions" ,link:"/missionsPage"},
   { icon: Settings, label: "Settings",link:"" },
 ];
 
