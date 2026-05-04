@@ -97,8 +97,8 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
           </header>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-            <Glass className="p-5 lg:col-span-2 ">
-              <h2 className="mb-4 text-sm font-medium lowercase text-black tracking-wide ">
+            <Glass className="p-5 bg-white/40 backdrop-blur-md border border-white/10 rounded-xl lg:col-span-2 ">
+              <h2 className="mb-4 text-sm font-medium  capitalize text-black tracking-wide ">
                 current request status
               </h2>
               <div className="flex items-center gap-6">
@@ -116,7 +116,7 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
                       key={k}
                       className="flex items-center justify-between border-b border-white/10 pb-2 last:border-0"
                     >
-                      <span className="text-muted-foreground">{k}</span>
+                      <span className="text-black/80">{k}</span>
                       <span className="font-medium text-primary">{v}</span>
                     </div>
                   ))}
@@ -124,7 +124,7 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
               </div>
             </Glass>
 
-            <Glass className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4 space-y-3">
+            <Glass className="bg-white/40 backdrop-blur-md border border-white/10 rounded-xl p-4 space-y-3">
               <h2 className="mb-4 text-sm font-medium text-black">My Profile</h2>
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/30 to-warning/30">
@@ -148,8 +148,8 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
               </div>
             </Glass>
 
-            <Glass className="p-5">
-              <h2 className="mb-4 text-sm font-medium text-black">my requests:</h2>
+            <Glass className="p-5 bg-white/40 backdrop-blur-md border border-white/10 rounded-xl">
+              <h2 className="mb-4 text-sm font-medium text-black">My Requests:</h2>
               <ul className="space-y-2">
                 {requests.map((r) => (
                   <li
@@ -158,7 +158,7 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
                   >
                     <div>
                       <div className="text-sm font-medium">{r.id}</div>
-                      <div className="text-xs text-muted-foreground">{r.date}</div>
+                      <div className="text-xs text-foreground">{r.date}</div>
                     </div>
                     <StatusBadge variant={r.status}>{r.label}</StatusBadge>
                   </li>
@@ -166,7 +166,7 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
               </ul>
             </Glass>
 
-            <Glass className="p-5">
+            <Glass className="p-5 bg-white/40 backdrop-blur-md border border-white/10 rounded-xl">
               <h2 className="mb-4 text-sm font-medium text-black">Last Request Summary:</h2>
               <div className="space-y-4 text-sm">
                 {[
@@ -180,14 +180,14 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
                     key={k}
                     className="flex items-center justify-between border-b border-white/10 pb-3 last:border-0"
                   >
-                    <span className="text-muted-foreground">{k}</span>
+                    <span className="text-foreground">{k}</span>
                     <span className="font-medium text-primary">{v}</span>
                   </div>
                 ))}
               </div>
             </Glass>
 
-            <Glass className="p-5">
+            <Glass className="p-5 bg-white/40 backdrop-blur-md border border-white/10 rounded-xl">
               <h2 className="mb-4 text-sm font-medium text-black">Emergency Contact</h2>
               <div className="text-lg font-semibold">Ahemed Ali</div>
               <div className="my-4 h-px bg-white/10" />
@@ -197,23 +197,23 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
               </div>
             </Glass>
 
-            <Glass className="p-5 lg:col-span-2">
+            <Glass className="p-5 bg-white/40 backdrop-blur-md border border-white/10 rounded-xl lg:col-span-2">
               <h2 className="mb-4 text-sm font-medium text-black">Mission report</h2>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between rounded-lg bg-black/20 px-3 py-2">
-                  <span>Decision</span>
+                  <span className="text-black">Decision</span>
                   <StatusBadge variant="accepted">accepted</StatusBadge>
                 </div>
                 <div className="rounded-lg bg-black/20 px-3 py-2">
-                  <div className="mb-1 text-muted-foreground">Reason</div>
-                  <div className="text-xs text-muted-foreground/70">
+                  <div className="mb-1 text-black">Reason</div>
+                  <div className="text-xs text-black/70">
                     Mission completed successfully. Target located and assistance dispatched.
                   </div>
                 </div>
               </div>
             </Glass>
 
-            <Glass className="p-5">
+            <Glass className="p-5 bg-white/40 backdrop-blur-md border border-white/10 rounded-xl">
               <h2 className="mb-2 text-sm font-medium text-black">Feedback</h2>
               <p className="mb-4 text-xs text-muted-foreground">
                 how was your experience with our service?
@@ -228,7 +228,7 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
               <input
                 type="text"
                 placeholder="Leave a comment…"
-                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm placeholder:text-muted-foreground/95 focus:border-primary focus:outline-none"
               />
             </Glass>
             <div className="w-[100vw] flex justify-end">

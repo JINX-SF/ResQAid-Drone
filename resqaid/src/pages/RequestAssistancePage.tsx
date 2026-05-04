@@ -44,7 +44,7 @@ function StepBadge({ n, label, sub }: { n: number; label: string; sub: string })
         {n}
       </div>
       <div>
-        <div className="text-sm font-semibold text-foreground">{label}</div>
+        <div className="text-sm font-semibold text-white">{label}</div>
         <div className="text-[11px] text-muted-foreground">{sub}</div>
       </div>
     </div>
@@ -81,11 +81,11 @@ const RequestAssistancePage = () => {
         <div className="space-y-4">
           {/* Header card */}
           <Glass className="p-5">
-            <h2 className="text-lg font-semibold">Request assistance</h2>
+            <h2 className="text-lg text-white font-semibold">Request assistance</h2>
             <p className="mb-5 text-xs text-muted-foreground">
               Fill in the details below to request drone support. Our team will respond as quickly as possible.
             </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 text-white sm:grid-cols-4">
               <StepBadge n={1} label="Service" sub="What do you need?" />
               <StepBadge n={2} label="Location" sub="Where are you?" />
               <StepBadge n={3} label="Details" sub="Provide more info" />
@@ -111,7 +111,7 @@ const RequestAssistancePage = () => {
                   </div>
                 )}
                 <DroneIcon className="mx-auto mb-3 h-12 w-12" />
-                <div className="text-center font-semibold">Search & Rescue</div>
+                <div className="text-center text-primary-foreground font-semibold">Search & Rescue</div>
                 <p className="mt-1 text-center text-xs text-muted-foreground">
                   Drones will search for and locate people in need
                 </p>
@@ -134,7 +134,7 @@ const RequestAssistancePage = () => {
                   </div>
                 )}
                 <Package className="mx-auto mb-3 h-12 w-12 text-foreground" />
-                <div className="text-center font-semibold">Delivery</div>
+                <div className="text-center text-primary-foreground font-semibold">Delivery</div>
                 <p className="mt-1 text-center text-xs text-muted-foreground">
                   Request essential supplies delivered by drone
                 </p>
@@ -147,7 +147,7 @@ const RequestAssistancePage = () => {
 
           {/* Step 2 — Location */}
           <Glass className="p-5">
-            <StepBadge n={2} label="Location" sub="Where are you or where is assistance needed?" />
+            <StepBadge n={2}  label="Location" sub="Where are you or where is assistance needed?" />
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-3">
                 <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground hover:opacity-90">
@@ -164,7 +164,7 @@ const RequestAssistancePage = () => {
                   />
                 </div>
                 <div className="text-sm">
-                  <div>Oran city, Hannouchi Road</div>
+                  <div className="text-primary-foreground">Oran city, Hannouchi Road</div>
                   <div className="text-xs text-muted-foreground">
                     Lat: 34.876 N · Lon: 4.908 E
                   </div>
@@ -195,7 +195,7 @@ const RequestAssistancePage = () => {
                         className={`h-8 w-8 rounded-md border text-xs ${
                           people === p
                             ? "border-primary bg-primary text-primary-foreground"
-                            : "border-white/10 bg-black/30 text-foreground hover:border-white/20"
+                            : "border-white/10 bg-black/30 text-primary-foreground hover:border-white/20"
                         }`}
                       >
                         {p}
@@ -217,7 +217,7 @@ const RequestAssistancePage = () => {
                           className={`rounded-md border px-2 py-1 text-xs ${
                             active
                               ? "border-primary bg-primary text-primary-foreground"
-                              : "border-white/10 bg-black/30 text-foreground hover:border-white/20"
+                              : "border-white/10 bg-black/30 text-primary-foreground hover:border-white/20"
                           }`}
                         >
                           {c}
@@ -240,7 +240,7 @@ const RequestAssistancePage = () => {
                           className={`rounded-md border px-2 py-1 text-xs ${
                             active
                               ? "border-primary bg-primary text-primary-foreground"
-                              : "border-white/10 bg-black/30 text-foreground hover:border-white/20"
+                              : "border-white/10 bg-black/30 text-primary-foreground hover:border-white/20"
                           }`}
                         >
                           {u}
@@ -259,7 +259,7 @@ const RequestAssistancePage = () => {
                       className={`rounded-full border px-3 py-1 text-xs ${
                         urgency === "minor"
                           ? "border-warning bg-warning/20 text-warning"
-                          : "border-white/10 bg-black/30 text-muted-foreground hover:border-white/20"
+                          : "border-white/10 bg-black/30 text-primary-foreground hover:border-white/20"
                       }`}
                     >
                       Minor
@@ -290,12 +290,12 @@ const RequestAssistancePage = () => {
                   placeholder="Describe what happened…"
                 />
                 <div className="flex items-center justify-between gap-2">
-                  <button className="flex items-center gap-2 rounded-md border border-white/10 bg-black/30 px-3 py-2 text-xs hover:border-white/20">
-                    <Upload className="h-3.5 w-3.5" /> Upload photo
+                  <button className="flex items-center gap-2 rounded-md border border-white/10 bg-black/30 text-white px-3 py-2 text-xs hover:border-white/20">
+                    <Upload className="h-3.5 w-3.5 text-blue-200" /> Upload photo
                   </button>
-                  <button className="flex items-center gap-2 rounded-md border border-white/10 bg-black/30 px-3 py-2 text-xs hover:border-white/20">
+                  <button className="flex items-center gap-2 rounded-md border border-white/10 text-white bg-black/30 px-3 py-2 text-xs hover:border-white/20">
                     <span className="h-2 w-2 rounded-full bg-destructive" />
-                    <Mic className="h-3.5 w-3.5" /> Record Voice
+                    <Mic className="h-3.5 w-3.5 text-red-600" /> Record Voice
                   </button>
                 </div>
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
