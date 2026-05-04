@@ -3,9 +3,11 @@ import { cn } from "@/lib/utils";
 import drone from "@/assets/drone.png"
 import Drone from "@/components/DroneIcon"
 import { Link } from "react-router-dom";
+import { AlertTriangle  } from "lucide-react";
 
 const navItems = [
   { icon: Drone, label: "Drone" ,link:"/dronespage"},
+  { icon: AlertTriangle, label: "Emergency request" ,link:"/request-assistance"},
   { icon: CheckSquare, label: "Requests" ,link:"/requestpage"},
   { icon: Users, label: "Users" ,link:"/userspage"},
   { icon: Sliders, label: "Control panel" ,link:"/controle"},

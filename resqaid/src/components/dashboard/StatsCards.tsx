@@ -1,15 +1,16 @@
-import { Plane, AlertTriangle, Users } from "lucide-react";
+import { AlertTriangle, Users } from "lucide-react";
+import DroneIcon from "../DroneIcon";
 
 const stats = [
   {
-    icon: Plane,
+    icon: DroneIcon,
     label: "Active missions",
     value: "10",
     sub: "3 in progress",
     iconColor: "text-primary",
   },
   {
-    icon: Plane,
+    icon: DroneIcon,
     label: "Available drones",
     value: "21",
     sub: "5 charging",
