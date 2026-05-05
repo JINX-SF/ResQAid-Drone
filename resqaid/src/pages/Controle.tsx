@@ -11,6 +11,7 @@ import rescueBg from "@/assets/rescue-bg.jpg";
 import { useState } from "react";
 
 const Controle = () => {
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   return (
