@@ -1,6 +1,4 @@
-
-import { useState } from "react";
-
+ import { useState } from "react";
 
 import {
   MapPin,
@@ -19,6 +17,7 @@ import bg from "@/assets/rescue-bg.jpg";
 import  DroneIcon  from "@/components/DroneIcon";
 import Sidebar from "@/components/Sidebar";
 import AppShell from "@/components/AppShell";
+import LeafletMap, { LatLng } from "@/components/LeafletMap";
 
 
 function Glass({
@@ -57,6 +56,44 @@ const RequestAssistancePage = () => {
   const [conditions, setConditions] = useState<string[]>(["Conscious", "Trapped"]);
   const [urgencyTypes, setUrgencyTypes] = useState<string[]>(["Bleeding"]);
   const [urgency, setUrgency] = useState<"minor" | "critical">("critical");
+  const [location, setLocation] = useState<LatLng | null>(null);
+  const [locationLabel, setLocationLabel] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [locating, setLocating] = useState(false);
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setLocation(ll);
+        setLocationLabel(`Lat: ${ll.lat.toFixed(5)} · Lon: ${ll.lng.toFixed(5)}`);
+        setLocating(false);
+      },
+      () => setLocating(false)
+    );
+  };
+
+  const handleMapPick = (ll: LatLng) => {
+    setLocation(ll);
+    setLocationLabel(`Lat: ${ll.lat.toFixed(5)} · Lon: ${ll.lng.toFixed(5)}`);
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`
+      );
+      const data = await res.json();
+      if (data.length > 0) {
+        const ll = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        setLocation(ll);
+        setLocationLabel(data[0].display_name.split(",").slice(0, 3).join(", "));
+      }
+    } catch { /* ignore */ }
+  };
 
   const toggle = (
     arr: string[],
@@ -147,34 +184,63 @@ const RequestAssistancePage = () => {
 
           {/* Step 2 — Location */}
           <Glass className="p-5">
-            <StepBadge n={2}  label="Location" sub="Where are you or where is assistance needed?" />
+            <StepBadge n={2} label="Location" sub="Where are you or where is assistance needed?" />
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {/* controls */}
               <div className="space-y-3">
-                <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground hover:opacity-90">
+                <button
+                  onClick={useMyLocation}
+                  disabled={locating}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+                >
                   <MapPin className="h-4 w-4" />
-                  Use My Location
+                  {locating ? "Detecting…" : "Use My Location"}
                 </button>
-                <div className="text-center text-xs text-muted-foreground">or</div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search and enter address"
-                    className="w-full rounded-lg border border-white/10 bg-black/40 py-2 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-                  />
-                </div>
-                <div className="text-sm">
-                  <div className="text-primary-foreground">Oran city, Hannouchi Road</div>
-                  <div className="text-xs text-muted-foreground">
-                    Lat: 34.876 N · Lon: 4.908 E
+                <div className="text-center text-xs text-muted-foreground">or search / tap the map</div>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                      placeholder="Search address…"
+                      className="w-full rounded-lg border border-white/10 bg-black/40 py-2 pl-9 pr-3 text-sm text-white placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                    />
                   </div>
+                  <button
+                    onClick={handleSearch}
+                    className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-white hover:border-primary"
+                  >
+                    Go
+                  </button>
                 </div>
+                {location ? (
+                  <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm">
+                    <div className="flex items-center gap-2 text-primary-foreground font-medium">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      Location set
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground truncate">{locationLabel}</div>
+                    <div className="mt-0.5 text-[10px] text-muted-foreground/70">
+                      {location.lat.toFixed(6)}°N · {location.lng.toFixed(6)}°E
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground">
+                    No location selected — tap the map or use GPS
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-center rounded-lg border border-white/10 bg-black/40 p-2">
-                <div className="relative h-40 w-full overflow-hidden rounded-md bg-[linear-gradient(135deg,#1a3a2e_0%,#2d4a3e_50%,#1a3a2e_100%)]">
-                  <div className="absolute inset-0 opacity-40 [background-image:repeating-linear-gradient(0deg,transparent_0,transparent_19px,rgba(255,255,255,0.1)_20px),repeating-linear-gradient(90deg,transparent_0,transparent_19px,rgba(255,255,255,0.1)_20px)]" />
-                  <MapPin className="absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 text-destructive drop-shadow" />
-                </div>
+
+              {/* real map */}
+              <div className="h-52 md:h-auto rounded-lg border border-white/10 bg-black/40 overflow-hidden">
+                <LeafletMap
+                  userPin={location}
+                  onLocationPick={handleMapPick}
+                  className="h-full w-full"
+                />
               </div>
             </div>
           </Glass>

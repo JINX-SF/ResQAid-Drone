@@ -1,142 +1,212 @@
-import { useEffect, useState } from "react";
-import socket from "@/socket";
+import { useEffect, useRef, useState, useCallback } from "react";
 
-// this is the shape of data coming from backend every second
-interface CameraData {
-  name: string;
-  scene: string;      // what the drone "sees" — text description
-  lat: string;        // current GPS latitude as string
-  lng: string;        // current GPS longitude as string
-  altitude: number;   // meters above ground
-  speed: number;      // km/h
-  heading: number;    // compass direction 0-360
-  timestamp: string;  // current time as string
-  recording: boolean; // is drone actively recording
+interface SimState {
+  lat: number;
+  lng: number;
+  altitude: number;
+  speed: number;
+  heading: number;
+  time: number;
 }
 
 const CameraFeed = () => {
-  // default state — shows before any mission starts
-  const [camera, setCamera] = useState<CameraData>({
-    name: "No drone active",
-    scene: "Waiting for mission...",
-    lat: "0.000000", lng: "0.000000",
-    altitude: 0, speed: 0, heading: 0,
-    timestamp: "--:--:--", recording: false,
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animRef = useRef<number>(0);
+
+  const simRef = useRef<SimState>({
+    lat: 35.6971,
+    lng: -0.6308,
+    altitude: 85,
+    speed: 32,
+    heading: 47,
+    time: 0,
   });
 
-  const [nightVision, setNightVision] = useState(false);
-  const [scanLine, setScanLine] = useState(0);
+  const [isFlying, setIsFlying] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [timestamp, setTimestamp] = useState("--:--:--");
 
+  // ============================
+  // 🎥 VIDEO CONTROL
+  // ============================
+  const startVideo = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play();
+    }
+    setIsFlying(true);
+    setRecording(true);
+  };
+
+  const stopVideo = () => {
+    videoRef.current?.pause();
+    setIsFlying(false);
+    setRecording(false);
+  };
+
+  // ============================
+  // 🕒 CLOCK
+  // ============================
   useEffect(() => {
-    // listen for camera data from backend — fires every 1 second during mission
-    socket.on("cameraFeed", (data) => {
-      setCamera(data); // React re-renders automatically with new data
-    });
-
-    // animate the scan line in night vision mode
-    const scanInterval = setInterval(() => {
-      setScanLine((prev) => (prev + 2) % 100);
-    }, 50);
-
-    // cleanup — stop listening when component unmounts
-    return () => {
-      socket.off("cameraFeed");
-      clearInterval(scanInterval);
-    };
+    const id = setInterval(() => {
+      setTimestamp(new Date().toLocaleTimeString("en-GB"));
+    }, 1000);
+    return () => clearInterval(id);
   }, []);
 
-  // day mode: real satellite map from OpenStreetMap centered on drone GPS
-  const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${camera.lat},${camera.lng}&zoom=15&size=800x400&markers=${camera.lat},${camera.lng},red`;
+  // ============================
+  // 🎯 DRAW HUD (overlay)
+  // ============================
+  const drawHUD = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+    const sim = simRef.current;
+
+    ctx.clearRect(0, 0, w, h);
+
+    sim.time += 0.016;
+    sim.heading = (sim.heading + 0.05) % 360;
+    sim.altitude = 85 + Math.sin(sim.time * 0.3) * 8;
+    sim.speed = 28 + Math.sin(sim.time * 0.5) * 10;
+
+    // 🎯 CROSSHAIR
+    const cx = w / 2;
+    const cy = h / 2;
+
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(cx - 30, cy);
+    ctx.lineTo(cx - 10, cy);
+    ctx.moveTo(cx + 10, cy);
+    ctx.lineTo(cx + 30, cy);
+    ctx.moveTo(cx, cy - 30);
+    ctx.lineTo(cx, cy - 10);
+    ctx.moveTo(cx, cy + 10);
+    ctx.lineTo(cx, cy + 30);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 📊 TEXT
+    ctx.fillStyle = "white";
+    ctx.font = "12px monospace";
+
+    ctx.fillText(`ALT: ${Math.round(sim.altitude)}m`, 20, h - 40);
+    ctx.fillText(`SPD: ${Math.round(sim.speed)} km/h`, 20, h - 20);
+    ctx.fillText(`HDG: ${Math.round(sim.heading)}°`, w - 120, h - 20);
+
+    // 🔴 REC BLINK
+    if (recording && Math.sin(sim.time * 6) > 0) {
+      ctx.fillStyle = "red";
+      ctx.fillText("● REC", w / 2 - 20, 30);
+    }
+
+    animRef.current = requestAnimationFrame(drawHUD);
+  }, [recording]);
+
+  // ============================
+  // ▶️ START HUD LOOP
+  // ============================
+  useEffect(() => {
+    animRef.current = requestAnimationFrame(drawHUD);
+    return () => cancelAnimationFrame(animRef.current);
+  }, [drawHUD]);
+
+  // ============================
+  // 📐 CANVAS RESIZE
+  // ============================
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    };
+
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+
+    return () => observer.disconnect();
+  }, []);
+
+  const sim = simRef.current;
 
   return (
-    <div className="relative rounded-xl overflow-hidden flex-1 min-h-[300px] bg-black border border-white/10">
+    <div className="relative rounded-xl overflow-hidden w-full h-[400px] bg-black border border-white/10">
 
-      {/* ── DAY MODE ── */}
-      {!nightVision && (
-        <>
-          <img src={mapUrl} alt="Drone camera"
-            className="w-full h-full object-cover absolute inset-0"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-          />
-          <div className="absolute inset-0 bg-black/20" />
-          {/* corner brackets */}
-          <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-white/70" />
-          <div className="absolute top-3 right-14 w-6 h-6 border-t-2 border-r-2 border-white/70" />
-          <div className="absolute bottom-12 left-3 w-6 h-6 border-b-2 border-l-2 border-white/70" />
-          <div className="absolute bottom-12 right-3 w-6 h-6 border-b-2 border-r-2 border-white/70" />
-          {/* crosshair */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="relative w-16 h-16">
-              <div className="absolute top-1/2 left-0 right-0 h-px bg-white/60" />
-              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/60" />
-              <div className="absolute top-1/2 left-1/2 w-4 h-4 -translate-x-1/2 -translate-y-1/2 border border-white/70 rounded-full" />
-            </div>
-          </div>
-          {/* top label */}
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-3">
-            <span className="text-white text-xs font-mono font-bold tracking-widest drop-shadow">
-              {camera.name.toUpperCase()}
-            </span>
-            {camera.recording && (
-              <span className="flex items-center gap-1 text-red-400 text-xs font-mono">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> REC
-              </span>
-            )}
-          </div>
-          {/* scene text */}
-          <div className="absolute bottom-16 left-0 right-0 flex justify-center">
-            <span className="text-white text-xs font-mono bg-black/50 px-3 py-1 rounded">
-              {camera.scene}
-            </span>
-          </div>
-        </>
-      )}
+      {/* 🎥 VIDEO FEED */}
+      <video
+        ref={videoRef}
+        src="/videos/drone.mp4"
+        className="absolute inset-0 w-full h-full object-cover"
+        muted
+        loop
+        playsInline
+      />
 
-      {/* ── NIGHT VISION MODE ── */}
-      {nightVision && (
-        <>
-          <div className="absolute inset-0 bg-gradient-to-b from-green-950/80 via-black to-green-950/40" />
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "linear-gradient(rgba(0,255,0,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,0,0.3) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
-          <div className="absolute left-0 right-0 h-px bg-green-400/30 blur-sm" style={{ top: `${scanLine}%` }} />
-          <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-green-400/70" />
-          <div className="absolute top-3 right-14 w-6 h-6 border-t-2 border-r-2 border-green-400/70" />
-          <div className="absolute bottom-12 left-3 w-6 h-6 border-b-2 border-l-2 border-green-400/70" />
-          <div className="absolute bottom-12 right-3 w-6 h-6 border-b-2 border-r-2 border-green-400/70" />
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="relative w-16 h-16">
-              <div className="absolute top-1/2 left-0 right-0 h-px bg-green-400/50" />
-              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-green-400/50" />
-              <div className="absolute top-1/2 left-1/2 w-4 h-4 -translate-x-1/2 -translate-y-1/2 border border-green-400/70 rounded-full" />
-            </div>
-          </div>
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-3">
-            <span className="text-green-400 text-xs font-mono font-bold tracking-widest">{camera.name.toUpperCase()}</span>
-            {camera.recording && (
-              <span className="flex items-center gap-1 text-red-400 text-xs font-mono">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> REC
-              </span>
-            )}
-          </div>
-          <div className="absolute bottom-16 left-0 right-0 flex justify-center">
-            <span className="text-green-300 text-xs font-mono bg-black/40 px-3 py-1 rounded">{camera.scene}</span>
-          </div>
-        </>
-      )}
+      {/* 🎯 HUD OVERLAY */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none"
+      />
 
-      {/* ── BOTTOM HUD — same in both modes ── */}
-      <div className={`absolute bottom-0 left-0 right-0 bg-black/70 px-4 py-2 flex justify-between font-mono text-[10px] ${nightVision ? "text-green-400" : "text-white"}`}>
-        <div><div>LAT: {camera.lat}</div><div>LNG: {camera.lng}</div></div>
-        <div className="text-center"><div>ALT: {camera.altitude}m</div><div>SPD: {camera.speed} km/h</div></div>
-        <div className="text-right"><div>HDG: {camera.heading}°</div><div>{camera.timestamp}</div></div>
+      {/* 🔝 TOP INFO */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex gap-3 text-white font-mono text-xs">
+        <span>DR-08</span>
+        {recording && (
+          <span className="text-red-400 flex items-center gap-1">
+            ● REC
+          </span>
+        )}
       </div>
 
-      {/* ── TOGGLE BUTTON ── */}
-      <button
-        onClick={() => setNightVision(!nightVision)}
-        className="absolute top-3 right-3 z-10 bg-black/60 hover:bg-black/80 text-white text-[10px] font-mono px-2 py-1 rounded border border-white/20"
-      >
-        {nightVision ? "☀️ DAY" : "🌙 NIGHT"}
-      </button>
+      {/* 🔻 BOTTOM INFO */}
+      <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-4 py-2 flex justify-between text-white text-xs font-mono">
+        <div>
+          LAT: {sim.lat.toFixed(6)} <br />
+          LNG: {sim.lng.toFixed(6)}
+        </div>
+
+        <div>
+          ALT: {Math.round(sim.altitude)}m <br />
+          SPD: {Math.round(sim.speed)}
+        </div>
+
+        <div>
+          HDG: {Math.round(sim.heading)}° <br />
+          {timestamp}
+        </div>
+      </div>
+
+      {/* 🎮 CONTROLS */}
+      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-4 z-10">
+        <button
+          onClick={startVideo}
+          className="bg-green-600 px-4 py-2 rounded text-white"
+        >
+          🚀 Launch
+        </button>
+
+        <button
+          onClick={stopVideo}
+          className="bg-red-600 px-4 py-2 rounded text-white"
+        >
+          🛑 Emergency Stop
+        </button>
+      </div>
     </div>
   );
 };
