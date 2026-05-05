@@ -22,6 +22,7 @@ import RequestAssistancePage from "@/pages/RequestAssistancePage"
 import UsersPage from "./pages/UsersPage";
 import MissionsPage from "./pages/MissionsPage";
 import Forgot from "./pages/forgot";
+import AdminRoute from "./components/AdminRoute";
 import Reset from "./pages/reset";
 
 
@@ -58,6 +59,16 @@ const App = () => (
 
           <Route path="/controle" element={<ProtectedRoute><Controle /></ProtectedRoute> }/>
           <Route path="/verify-email/:token" element={<VerifyEmail />} />
+
+          <Route path="/profile/:id" element={<Profile />} />
+
+          <Route path="/userspage" element={ <AdminRoute> <UsersPage /> </AdminRoute> } />
+          <Route path="/controle" element={ <AdminRoute> <Controle /> </AdminRoute> } />
+          <Route path="/dronespage" element={ <AdminRoute> <DronesPage /> </AdminRoute> } />
+          <Route path="/missionsPage" element={ <AdminRoute> <MissionsPage/> </AdminRoute> } />
+           
+
+
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

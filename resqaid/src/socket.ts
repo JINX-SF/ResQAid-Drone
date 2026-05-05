@@ -2,7 +2,7 @@ import { io, Socket } from "socket.io-client";
 
 // creates ONE connection to your backend
 // every component that imports this file shares this same connection
-const socket = io("http://localhost:3000", {
+const socket = io("http://localhost:5000", {
   autoConnect: true,   // connects immediately when imported
   reconnection: true,  // reconnects automatically if server restarts
 });

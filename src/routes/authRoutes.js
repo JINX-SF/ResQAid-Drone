@@ -12,10 +12,13 @@ const {
   resetPassword,
   getMe,
   changePassword,
-    updateProfile,
+  updateProfile,
+  getAllUsers,
+  getUserById,
 } = require("../controllers/authControllers");
 
 const { protect } = require("../middleware/authMiddleware");
+const adminOnly = require("../middleware/adminMiddleware");
 
 router.post("/register", register);
 router.post("/login", login);
@@ -35,5 +38,8 @@ router.get("/me", protect, getMe);
 router.patch("/change-password", protect, changePassword);
 
 router.patch("/profile", protect, updateProfile);
+
+router.get("/users", protect,adminOnly, getAllUsers);
+router.get("/user/:id", protect,adminOnly, getUserById);
 
 module.exports = router;

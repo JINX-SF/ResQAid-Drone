@@ -1,21 +1,14 @@
 import { MapPin, Trash2, Pencil, Package } from "lucide-react";
 import AppShell, { Glass } from "../components/AppShell";
-import { useState } from "react";
 import DroneIcon from "@/components/DroneIcon";
+
+import { useEffect, useState } from "react";
+import API from "@/api";
 
 type Status = "in mission" | "active" | "offline";
 type DType = "Search & rescue" | "Delivery";
 
-const drones: { id: string; type: DType; status: Status; battery: number }[] = [
-  { id: "DR-1", type: "Search & rescue", status: "in mission", battery: 78 },
-  { id: "DR-2", type: "Delivery", status: "in mission", battery: 60 },
-  { id: "DR-3", type: "Search & rescue", status: "active", battery: 91 },
-  { id: "DR-4", type: "Search & rescue", status: "offline", battery: 23 },
-  { id: "DR-5", type: "Search & rescue", status: "active", battery: 23 },
-  { id: "DR-6", type: "Delivery", status: "in mission", battery: 33 },
-  { id: "DR-7", type: "Delivery", status: "offline", battery: 33 },
-  { id: "DR-8", type: "Search & rescue", status: "offline", battery: 14 },
-];
+
 
 function StatusPill({ status }: { status: Status }) {
   const styles: Record<Status, string> = {
@@ -43,9 +36,136 @@ function TypeCell({ type }: { type: DType }) {
   }
   return <span>Search &amp; rescue</span>;
 }
-
 export default function DronesPage() {
+  const [form, setForm] = useState({
+  name: "",
+  type: "SAR",
+  status: "idle",
+
+  speed: 0,
+  maxRange: 0,
+  payloadCapacity: 0,
+  battery: 100,
+
+  lat: 0,
+  lng: 0,
+  alt: 0,
+
+  baseLat: 0,
+  baseLng: 0,
+  baseAlt: 0,
+});
+
+
    const [open, setOpen] = useState(false);
+
+   const [drones, setDrones] = useState([]);
+
+ useEffect(() => {
+  const fetchDrones = async () => {
+    try {
+      const res = await API.get("/drones");
+
+      console.log("INITIAL DRONES:", res.data);
+
+      setDrones(
+        res.data?.drones ||
+        res.data?.data ||
+        res.data ||
+        []
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  
+
+  fetchDrones();
+}, []);
+
+/*const handleAddDrone = async () => {
+  try {
+    await API.post("/drones", {
+      name: "Drone X",
+      type: "delivery",
+      status:  "idle",
+      battery: 80,
+      location: {
+        lat: 10,
+        lng: 10,
+      },
+    });
+
+    alert("Drone added ✅");
+    setOpen(false);
+
+    // refresh list
+    const res = await API.get("/drones");
+
+console.log("DRONES RESPONSE:", res.data);
+
+setDrones(
+  res.data?.drones ||
+  res.data?.data ||
+  res.data ||
+  []
+);
+   setDrones(res.data?.drones || []);
+
+  } catch (err: any) {
+  console.log("BACKEND ERROR STRING:", JSON.stringify(err.response?.data, null, 2));
+  console.log("BACKEND ERROR RAW:", err.response?.data);
+  alert("Error adding drone");
+}
+}; */
+const handleAddDrone = async () => {
+  try {
+    const droneData = {
+      name: form.name,
+      type: form.type,
+      status: form.status,
+
+      speed: Number(form.speed),
+      maxRange: Number(form.maxRange),
+      payloadCapacity: Number(form.payloadCapacity),
+      battery: Number(form.battery),
+
+      location: {
+        lat: Number(form.lat),
+        lng: Number(form.lng),
+        alt: Number(form.alt),
+      },
+
+      homeBase: {
+        lat: Number(form.baseLat),
+        lng: Number(form.baseLng),
+        alt: Number(form.baseAlt),
+      },
+    };
+
+    console.log("🚀 SENDING:", droneData);
+
+    const res = await API.post("/drones", droneData);
+
+    alert("Drone added ✅");
+
+    setOpen(false);
+
+    // 🔥 refresh drones
+    const list = await API.get("/drones");
+
+    setDrones(
+      list.data?.drones ||
+      list.data?.data ||
+      list.data ||
+      []
+    );
+
+  } catch (err: any) {
+    console.log("❌ BACKEND:", err.response?.data);
+    alert(err.response?.data?.message || "Error adding drone");
+  }
+};
 
   return (
     <div>
@@ -76,13 +196,36 @@ export default function DronesPage() {
                   Basic Information
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Drone name"><input className={inputCls} /></Field>
+                  <Field label="Drone name"><input className={inputCls}  value={form.name}
+    onChange={(e) =>
+      setForm({ ...form, name: e.target.value })
+    }/></Field>
                   <Field label="Drone type">
-                    <select className={inputCls}><option>Quadcopter</option><option>Hexacopter</option></select>
-                  </Field>
-                  <Field label="Status" full>
-                    <select className={inputCls}><option>Available</option><option>In Mission</option></select>
-                  </Field>
+  <select
+    className={inputCls}
+    value={form.type}
+    onChange={(e) =>
+      setForm({ ...form, type: e.target.value })
+    }
+  >
+    <option value="SAR">Search & Rescue</option>
+    <option value="delivery">Delivery</option>
+    <option value="hybrid">Hybrid</option>
+  </select>
+</Field>
+                 <Field label="Status" full>
+  <select
+    className={inputCls}
+    value={form.status}
+    onChange={(e) =>
+      setForm({ ...form, status: e.target.value })
+    }
+  >
+    <option value="idle">Available</option>
+    <option value="in_mission">In Mission</option>
+    <option value="maintenance">Maintenance</option>
+  </select>
+</Field>
                 </div>
               </section>
 
@@ -93,9 +236,42 @@ export default function DronesPage() {
                   Home Base
                 </h3>
                 <div className="space-y-3">
-                  <Field label="Base latitude"><input className={inputCls} /></Field>
-                  <Field label="Base longitude"><input className={inputCls} /></Field>
-                  <Field label="Base altitude"><input className={inputCls} /></Field>
+                 <Field label="Latitude">
+  <input
+    className={inputCls}
+    value={form.lat}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        lat: Number(e.target.value)
+      })
+    }
+  />
+</Field>
+                  <Field label="Longitude">
+  <input
+    className={inputCls}
+    value={form.lng}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        lng: Number(e.target.value)
+      })
+    }
+  />
+</Field>
+                  <Field label="altitude">
+  <input
+    className={inputCls}
+    value={form.alt}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        alt: Number(e.target.value)
+      })
+    }
+  />
+</Field>
                   <p className="text-xs text-green-400/80">This is the drone's current GPS position.</p>
                 </div>
               </section>
@@ -107,10 +283,49 @@ export default function DronesPage() {
                   Performance Specifications
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Speed (m/s)"><input className={inputCls} /></Field>
-                  <Field label="Max range"><input className={inputCls} /></Field>
-                  <Field label="Payload Capacity (kg)"><input className={inputCls} /></Field>
-                  <Field label="Battery (%)"><input className={inputCls} /></Field>
+                 <Field label="Speed (m/s)">
+  <input
+    className={inputCls}
+    type="number"
+    value={form.speed}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        speed: Number(e.target.value)
+      })
+    }
+  />
+</Field>
+                  <Field label="Max range">
+  <input
+    className={inputCls}
+    type="number"
+    value={form.maxRange}
+    onChange={(e) =>
+      setForm({ ...form, maxRange: Number(e.target.value) })
+    }
+  />
+</Field>
+                  <Field label="Payload Capacity (kg)">
+  <input
+    className={inputCls}
+    type="number"
+    value={form.payloadCapacity}
+    onChange={(e) =>
+      setForm({ ...form, payloadCapacity: Number(e.target.value) })
+    }
+  />
+</Field>
+                 <Field label="Battery (%)">
+  <input
+    className={inputCls}
+    type="number"
+    value={form.battery}
+    onChange={(e) =>
+      setForm({ ...form, battery: Number(e.target.value) })
+    }
+  />
+</Field>
                 </div>
               </section>
 
@@ -137,7 +352,9 @@ export default function DronesPage() {
               >
                 ⊗ Cancel
               </button>
-              <button className="px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold shadow-lg shadow-green-500/30 transition">
+              <button
+                onClick={handleAddDrone}
+               className="px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold shadow-lg shadow-green-500/30 transition">
                 Add drone to your base
               </button>
             </div>
@@ -162,20 +379,24 @@ export default function DronesPage() {
           <div className="text-right">Actions</div>
         </div>
         <ul className="divide-y text-white/70 divide-white/5">
-          {drones.map((d) => (
+          {drones?.map((d) => (
             <li
-              key={d.id}
+              key={d._id}
               className="grid grid-cols-[0.7fr_1.3fr_1fr_0.8fr_1.2fr_1fr] items-center gap-4 px-6 py-4 text-sm transition-colors hover:bg-white/5"
             >
-              <div className="font-medium">{d.id}</div>
+            <div className="font-medium">
+  {d._id ? d._id.slice(-5) : "N/A"}
+</div>
               <TypeCell type={d.type} />
               <div>
-                <StatusPill status={d.status} />
+                <StatusPill status={(d.status || "").toLowerCase() as Status} />
               </div>
               <div>{d.battery}%</div>
               <div className="flex items-center gap-2 text-white/70">
                 <MapPin className="h-4 w-4 text-primary" />
-                <span>Algeria,oran</span>
+                <span> {d.location
+      ? `${d.location.lat}, ${d.location.lng}`
+      : "No location"}</span>
               </div>
               <div className="flex justify-end gap-2">
                 <button className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/30 text-muted-foreground hover:text-destructive">

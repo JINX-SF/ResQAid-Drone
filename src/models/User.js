@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 
+
 const EmergencyContactSchema = new mongoose.Schema(
   {
     name:         { type: String, trim: true, default: "" },
@@ -39,6 +40,11 @@ const RecentRequestSchema = new mongoose.Schema(
 
 const UserSchema = new mongoose.Schema(
   {
+    role: {
+  type: String,
+  enum: ["user", "admin"],
+  default: "user",
+},
     name: {
       type: String,
       trim: true,

@@ -380,11 +380,40 @@ const sendTokenResponse = (user, statusCode, res) => {
   return res.status(statusCode).json({ success: true, token, user: userObj });
 };
 
+exports.getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ user });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.getAllUsers = async (req, res) => {
+  const users = await User.find().select("-password");
+
+  res.json({
+    users,
+  });
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTER  —  POST /api/auth/register
 // ─────────────────────────────────────────────────────────────────────────────
 exports.register = async (req, res, next) => {
   try {
+
+  // 🔥 send event
+  const io = req.app.get("io");
+  io.emit("newUser", user);
+
+  res.json({ success: true, user });
+
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {

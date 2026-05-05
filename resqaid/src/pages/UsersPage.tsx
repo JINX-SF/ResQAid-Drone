@@ -1,16 +1,53 @@
 import { User } from "lucide-react";
 import AppShell, { Glass } from "../components/AppShell";
 
-const users = Array.from({ length: 7 }).map((_, i) => ({
+import { useEffect, useState } from "react";
+import API from "@/api";
+import { useNavigate } from "react-router-dom";
+
+import socket from "@/socket";
+
+/*const users = Array.from({ length: 7 }).map((_, i) => ({
   name: i === 0 ? "Sarah ali" : i === 2 ? "Samia B." : "yacine benali",
   email: "Sarah.Ali@gmail.com",
   phone: "+213 555 987 654",
   joined: "23/04/2026",
   location: "Oran,Algeria",
-}));
+}));*/
+
+
+
 
 export default function UsersPage() {
+  const [users, setUsers] = useState<any[]>([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+  socket.on("newUser", (newUser) => {
+    console.log("🔥 new user received:", newUser);
+
+    setUsers((prev) => [newUser, ...prev]);
+  });
+
+  return () => {
+    socket.off("newUser");
+  };
+}, []);
+
+  useEffect(() => {
+  const fetchUsers = async () => {
+    try {
+      const res = await API.get("/auth/users");
+      setUsers(res.data.users);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  fetchUsers();
+}, []);
   return (
+
     <AppShell>
       <Glass className="overflow-hidden">
         <div className="flex items-center justify-between bg-black/40 px-6 py-4">
@@ -24,9 +61,9 @@ export default function UsersPage() {
           <div className="text-right">Actions</div>
         </div>
         <ul className="divide-y text-white/60 divide-white/5">
-          {users.map((u, i) => (
+          {users.map((u) => (
             <li
-              key={i}
+            key={u._id}
               className="grid grid-cols-[1.5fr_1.5fr_1fr_1fr_1fr] items-center gap-4 px-6 py-4 text-sm transition-colors hover:bg-white/5"
             >
               <div className="flex items-center gap-3">
@@ -37,12 +74,14 @@ export default function UsersPage() {
               </div>
               <div className="text-sm">
                 <div className="underline underline-offset-2 text-black/90">{u.email}</div>
-                <div className="text-xs text-white/50">{u.phone}</div>
+                <div className="text-xs text-white/50">{u.phone || "—"}</div>
               </div>
-              <div className="text-white/60">{u.joined}</div>
-              <div className="text-white/60">{u.location}</div>
+              <div className="text-white/60">{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</div>
+              <div className="text-white/60">{u.location || "—"}</div>
               <div className="flex justify-end">
-                <button className="rounded-lg bg-primary/80 px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary">
+                <button 
+                 onClick={() => navigate(`/profile/${u._id}`)}
+                className="rounded-lg bg-primary/80 px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary">
                   view profile
                 </button>
               </div>

@@ -11,16 +11,30 @@ import { Link } from "react-router-dom";
 
 import { useNavigate } from "react-router-dom";
 
+import { useParams } from "react-router-dom";
+
+
+
 
 
 const Profile = () => {
+  const { id } = useParams();
 const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
 
-  useEffect(() => {
+   useEffect(() => {
   const fetchUser = async () => {
     try {
-      const res = await API.get("/auth/me");
+      let res;
+
+      if (id) {
+        // 🔥 admin view
+        res = await API.get(`/auth/user/${id}`);
+      } else {
+        // 🔥 my own profile
+        res = await API.get("/auth/me");
+      }
+
       setUser(res.data.user);
     } catch (err) {
       console.error(err);
@@ -28,7 +42,7 @@ const navigate = useNavigate();
   };
 
   fetchUser();
-}, []);
+}, [id]);
   if (!user) return <p>Loading...</p>;
 
   return (

@@ -37,28 +37,30 @@ export default function  OAuthSuccess() {
   }
 }, [navigate]);*/
 
-useEffect(()=>{
+useEffect(() => {
   const token = new URLSearchParams(window.location.search).get("token");
 
-if (token) {
-  localStorage.setItem("token", token);
+  if (token) {
+    localStorage.setItem("token", token);
 
-  // 👇 check if user has profile or not
-  fetch("http://localhost:5000/api/auth/me", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      if (!data.user.birthday) {
-        navigate("/infos"); // NEW USER
-      } else {
-        navigate("/controle"); // EXISTING USER
-      }
-    });
-};
-});
+    fetch("http://localhost:5000/api/auth/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        // 🔥 SAVE USER HERE
+        localStorage.setItem("user", JSON.stringify(data.user));
 
+        // 👇 redirect logic
+        if (!data.user.birthday) {
+          navigate("/infos"); // NEW USER
+        } else {
+          navigate("/controle"); // EXISTING USER
+        }
+      });
+  }
+}, []);
   return <h2>Logging you in...</h2>;
 }

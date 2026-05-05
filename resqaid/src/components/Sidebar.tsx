@@ -5,7 +5,9 @@ import Drone from "@/components/DroneIcon"
 import { Link } from "react-router-dom";
 import { AlertTriangle  } from "lucide-react";
 
-const navItems = [
+const user = JSON.parse(localStorage.getItem("user") || "null");
+
+/*const navItems = [
   { icon: Drone, label: "Drone" ,link:"/dronespage"},
   { icon: AlertTriangle, label: "Emergency request" ,link:"/request-assistance"},
   { icon: CheckSquare, label: "Requests" ,link:"/requestpage"},
@@ -14,7 +16,19 @@ const navItems = [
   { icon: LayoutDashboard  , label: "Dashboard",link:"/dashboard" },
   { icon: Target, label: "Missions" ,link:"/missionsPage"},
   { icon: Settings, label: "Settings",link:"" },
-];
+];*/
+const navItems = user?.role === "admin"
+  ? [
+      { icon: Drone, label: "Drone", link: "/dronespage" },
+      { icon: Users, label: "Users", link: "/userspage" },
+      { icon: Sliders, label: "Control panel", link: "/controle" },
+      { icon: LayoutDashboard, label: "Dashboard", link: "/dashboard" },
+      { icon: Target, label: "Missions", link: "/missionsPage" },
+    ]
+  : [
+      { icon: AlertTriangle, label: "Emergency request", link: "/request-assistance" },
+      { icon: CheckSquare, label: "Requests", link: "/requestpage" },
+    ];
 
 interface SidebarProps {
   collapsed: boolean;
@@ -41,21 +55,21 @@ const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
       </div>
 
       <nav className="flex flex-col  gap-1 flex-1">
-        {navItems.map((item) => (
-          <Link to={item.link}>  
-          <button
-            key={item.label}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-black hover:bg-accent hover:text-white transition-colors text-left",
-              collapsed && "justify-center px-0"
-            )}
-            title={collapsed ? item.label : undefined}
-          >
-            <item.icon className="w-5 h-5 shrink-0" />
-            {!collapsed && item.label}
-          </button>
-          </Link>
-        ))}
+      {navItems.map((item) => (
+  <Link key={item.label} to={item.link}>
+    <button
+      className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-black hover:bg-accent hover:text-white transition-colors text-left",
+        collapsed && "justify-center px-0"
+      )}
+      title={collapsed ? item.label : undefined}
+    >
+      <item.icon className="w-5 h-5 shrink-0" />
+      {!collapsed && item.label}
+    </button>
+  </Link>
+))}
+            
 
       </nav>
 
