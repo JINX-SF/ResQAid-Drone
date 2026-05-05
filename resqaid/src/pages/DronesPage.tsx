@@ -1,7 +1,7 @@
 import { MapPin, Trash2, Pencil, Package } from "lucide-react";
 import AppShell, { Glass } from "../components/AppShell";
 import DroneIcon from "@/components/DroneIcon";
-
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "@/api";
 
@@ -37,6 +37,7 @@ function TypeCell({ type }: { type: DType }) {
   return <span>Search &amp; rescue</span>;
 }
 export default function DronesPage() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
   name: "",
   type: "SAR",
@@ -78,7 +79,7 @@ export default function DronesPage() {
       console.error(err);
     }
   };
-  
+  Trash2
 
   fetchDrones();
 }, []);
@@ -166,6 +167,39 @@ const handleAddDrone = async () => {
     alert(err.response?.data?.message || "Error adding drone");
   }
 };
+
+const handleDelete = async (id: string) => {
+  try {
+    await API.delete(`/drones/${id}`);
+
+    // remove from UI instantly
+    setDrones((prev) => prev.filter((d) => d._id !== id));
+
+  } catch (err) {
+    console.error(err);
+    alert("Error deleting drone");
+  }
+};
+
+const handleEdit = (drone) => {
+  setForm({
+  name: drone.name,
+  type: drone.type,
+  status: drone.status,
+  battery: drone.battery,
+
+  speed: drone.speed || 0,
+  maxRange: drone.maxRange || 0,
+  payloadCapacity: drone.payloadCapacity || 0,
+
+  lat: drone.location?.lat || 0,
+  lng: drone.location?.lng || 0,
+  alt: drone.location?.alt || 0,
+
+  baseLat: drone.homeBase?.lat || 0,
+  baseLng: drone.homeBase?.lng || 0,
+  baseAlt: drone.homeBase?.alt || 0,
+});};
 
   return (
     <div>
@@ -399,10 +433,15 @@ const handleAddDrone = async () => {
       : "No location"}</span>
               </div>
               <div className="flex justify-end gap-2">
-                <button className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/30 text-muted-foreground hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-                <button className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/30 text-muted-foreground hover:text-blue-600">
+                <button
+  onClick={() => handleDelete(d._id)}
+  className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/30 text-muted-foreground hover:text-destructive"
+>
+  <Trash2 className="h-4 w-4" />
+</button>
+                <button 
+                 onClick={() => navigate(`/drones/edit/${d._id}`)}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/30 text-muted-foreground hover:text-blue-600">
                   <Pencil className="h-4 hover:text-blue-400 w-4" />
                 </button>
               </div>

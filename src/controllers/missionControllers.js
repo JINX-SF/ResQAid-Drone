@@ -10,12 +10,22 @@ const allowedNext = {
 
 exports.createMission = async (req, res, next) => {
   try {
-    const { title, payloadWeight } = req.body;
+    const { title, payloadWeight, lat, lng, ...rest } = req.body;
     if (!title)
       return res.status(400).json({ success: false, message: "title is required" });
     if (payloadWeight != null && payloadWeight < 0)
       return res.status(400).json({ success: false, message: "payloadWeight cannot be negative" });
-    const mission = await Mission.create(req.body);
+
+const mission = await Mission.create({
+  ...rest,
+  title,
+  payloadWeight,
+
+  departureLocation: {
+    lat,
+    lng,
+  },
+});
     res.status(201).json({ success: true, data: mission });
   } catch (err) { next(err); }
 };

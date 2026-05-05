@@ -1,34 +1,35 @@
 import { Package } from "lucide-react";
 import {  Glass } from "@/components/AppShell";
 import AppShell from "@/components/AppShell";
-import { useState } from "react";
 
-
+import { useEffect, useState } from "react";
+import API from "@/api";
 
 type Status = "completed" | "pending" | "active";
 type Urgency = "critical" | "minor" | "low";
 type MType = "Search & rescue" | "Delivery";
 
 type Mission = {
-  id: string;
-  type: "Search & rescue" | "Delivery";
+  _id: string;
+  type: string;
   status: "completed" | "pending" | "active";
-  payload: string;
+  payloadWeight: number;
   urgency: "critical" | "minor" | "low";
-  time: string;
-  date: string;
-  location: string;
-  target: string;
+  startTime: string;
+
+  departureLocation?: {
+    lat: number;
+    lng: number;
+  };
+
+  targetArea?: {
+    lat: number;
+    lng: number;
+  };
+  startedAt?: string;   
+  createdAt?: string;
 };
-const missions: Mission[] = [
-  { id: "#01", type: "Search & rescue", status: "completed", payload: "12kg", urgency: "critical", time: "14:32", date: "21 May 2025", location: "Algeria,oran", target: "Algeria,oran" },
-  { id: "#02", type: "Search & rescue", status: "completed", payload: "8kg", urgency: "critical", time: "14:32", date: "21 May 2025", location: "Algeria,oran", target: "Algeria,oran" },
-  { id: "#03", type: "Search & rescue", status: "pending", payload: "8kg", urgency: "critical", time: "14:32", date: "21 May 2025", location: "Algeria,oran", target: "Algeria,oran" },
-  { id: "#04", type: "Search & rescue", status: "active", payload: "8kg", urgency: "minor", time: "14:32", date: "21 May 2025", location: "Algeria,oran", target: "Algeria,oran" },
-  { id: "#05", type: "Delivery", status: "completed", payload: "8kg", urgency: "minor", time: "14:32", date: "21 May 2025", location: "Algeria,oran", target: "Algeria,oran" },
-  { id: "#05", type: "Delivery", status: "pending", payload: "8kg", urgency: "critical", time: "14:32", date: "21 May 2025", location: "Algeria,oran", target: "Algeria,oran" },
-  { id: "#06", type: "Search & rescue", status: "pending", payload: "8kg", urgency: "low", time: "14:32", date: "21 May 2025", location: "Algeria,oran", target: "Algeria,oran" },
-];
+
 function StatusPill({ status }: { status: Status }) {
   const styles: Record<Status, string> = {
     completed: "bg-green-600 text-white",
@@ -42,16 +43,20 @@ function StatusPill({ status }: { status: Status }) {
   );
 }
 
-function UrgencyPill({ urgency }: { urgency: Urgency }) {
-  const styles: Record<Urgency, { bg: string; dot: string }> = {
-    critical: { bg: "bg-destructive/30 text-white", dot: "bg-destructive" },
-    minor: { bg: "bg-yellow-500/20 text-yellow-100", dot: "bg-yellow-400" },
-    low: { bg: "bg-green-600/20 text-green-100", dot: "bg-green-500" },
+function UrgencyPill({ urgency }: { urgency: string }) {
+  const key = (urgency || "").toLowerCase();
+
+  const styles: any = {
+    low: { bg: "bg-green-500/20 text-green-400" },
+    medium: { bg: "bg-yellow-500/20 text-yellow-400" },
+    high: { bg: "bg-orange-500/20 text-orange-400" },
+    critical: { bg: "bg-red-500/20 text-red-400" },
   };
-  const s = styles[urgency];
+
+  const style = styles[key] || styles.low;
+
   return (
-    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${s.bg}`}>
-      <span className={`h-2 w-2 rounded-full ${s.dot}`} />
+    <span className={`px-2 py-1 rounded ${style.bg}`}>
       {urgency}
     </span>
   );
@@ -96,16 +101,108 @@ function UrgencyBadge({ urgency }: { urgency: Mission["urgency"] }) {
     </span>
   );
 }
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  full,
+}: {
+  label: string;
+  children: React.ReactNode;
+  full?: boolean;
+}) {
   return (
-    <div>
-      <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">{label}</label>
+    <div className={full ? "col-span-2" : ""}>
+      <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">
+        {label}
+      </label>
       {children}
     </div>
   );
-}
+};
 export default function MissionsPage() {
-     const [open, setOpen] = useState(false);
+  const [missions, setMissions] = useState<Mission[]>([]);
+const [open, setOpen] = useState(false);
+
+const [form, setForm] = useState({
+  title: "",
+  type: "SAR",
+  status: "pending",
+  payloadWeight: 0,
+  urgency: "Low",
+  startTime: "",
+  locationName: "",
+  lat: 0,
+  lng: 0,
+  targetArea: "",
+  targetLat: 0,
+  targetLng: 0,
+});
+
+useEffect(() => {
+  const fetchMissions = async () => {
+    try {
+      const res = await API.get("/missions");
+      console.log("MISSIONS RESPONSE:", res.data);
+      setMissions(res.data?.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  fetchMissions();
+}, []);
+
+const handleAddMission = async () => {
+  try {
+    const missionData = {
+      title: form.title || form.type,
+      type: form.type,
+      status: form.status,
+      payloadWeight: Number(form.payloadWeight),
+      urgency: form.urgency,
+      startTime: form.startTime,
+
+      departureLocation: {
+        name: form.locationName,
+        lat: Number(form.lat),
+        lng: Number(form.lng),
+      },
+
+      targetArea: {
+        name: form.targetArea,
+        lat: Number(form.targetLat),
+        lng: Number(form.targetLng),
+      },
+    };
+console.log("SENDING:", {
+  lat: Number(form.lat),
+  lng: Number(form.lng),
+});
+console.log("FORM DATA:", form);
+    console.log("SENDING MISSION:", missionData);
+
+    await API.post("/missions", missionData);
+
+
+
+    const res = await API.get("/missions");
+
+setMissions(
+  res.data?.missions ||
+  res.data?.data ||
+  res.data ||
+  []
+);
+
+    setOpen(false);
+    alert("Mission added ✅");
+  } catch (err: any) {
+    console.log("BACKEND ERROR:", err.response?.data);
+    alert(err.response?.data?.message || "Error adding mission");
+  }
+};
+
+
   return (
     <div>
     {open && (
@@ -128,6 +225,10 @@ export default function MissionsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+
+
+
               {/* 1. Mission Info */}
               <section className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 md:col-span-2">
                 <h3 className="flex items-center gap-2 mb-4 font-semibold">
@@ -135,32 +236,71 @@ export default function MissionsPage() {
                   Mission Information
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Mission type">
-                    <select className={inputCls}>
-                      <option className="bg-slate-900">Search & rescue</option>
-                      <option className="bg-slate-900">Delivery</option>
-                    </select>
-                  </Field>
+
+<Field label="Mission Title" full>
+  <input
+    className={inputCls}
+    placeholder="Rescue operation #1"
+    value={form.title}
+    onChange={(e) =>
+      setForm({ ...form, title: e.target.value })
+    }
+  />
+</Field>
+
+                <select
+  className={inputCls}
+  value={form.type}
+  onChange={(e) => setForm({ ...form, type: e.target.value })}
+>
+  <option value="SAR">Search & rescue</option>
+  <option value="delivery">Delivery</option>
+</select>
                   <Field label="Status">
-                    <select className={inputCls}>
-                      <option className="bg-slate-900">Pending</option>
-                      <option className="bg-slate-900">Active</option>
-                      <option className="bg-slate-900">Completed</option>
-                    </select>
-                  </Field>
-                  <Field label="Payload (kg)">
-                    <input type="number" className={inputCls} placeholder="8" />
-                  </Field>
+  <select
+    className={inputCls}
+    value={form.status}
+    onChange={(e) =>
+      setForm({ ...form, status: e.target.value.toLowerCase() })
+    }
+  >
+    <option value="pending">Pending</option>
+    <option value="active">Active</option>
+    <option value="completed">Completed</option>
+  </select>
+</Field>
+                  <input
+  className={inputCls}
+  type="number"
+  value={form.payloadWeight}
+  onChange={(e) =>
+    setForm({ ...form, payloadWeight: Number(e.target.value) })
+  }
+/>
                   <Field label="Urgency">
-                    <select className={inputCls}>
-                      <option className="bg-slate-900">Critical</option>
-                      <option className="bg-slate-900">Minor</option>
-                      <option className="bg-slate-900">Low</option>
-                    </select>
-                  </Field>
+  <select
+  className={inputCls}
+  value={form.urgency}
+  onChange={(e) =>
+    setForm({ ...form, urgency: e.target.value })
+  }
+>
+  <option value="Low">Low</option>
+  <option value="Medium">Medium</option>
+  <option value="High">High</option>
+  <option value="Critical">Critical</option>
+</select>
+</Field>
                   <Field label="Start time">
-                    <input type="datetime-local" className={inputCls} />
-                  </Field>
+  <input
+    type="datetime-local"
+    className={inputCls}
+    value={form.startTime}
+    onChange={(e) =>
+      setForm({ ...form, startTime: e.target.value })
+    }
+  />
+</Field>
                 </div>
               </section>
 
@@ -171,9 +311,35 @@ export default function MissionsPage() {
                   Departure Location
                 </h3>
                 <div className="space-y-3">
-                  <Field label="Location"><input className={inputCls} placeholder="Algeria, Oran" /></Field>
-                  <Field label="Latitude"><input className={inputCls} placeholder="35.6971" /></Field>
-                  <Field label="Longitude"><input className={inputCls} placeholder="-0.6308" /></Field>
+                 <Field label="Location">
+  <input
+    className={inputCls}
+    value={`📍 ${form.lat}, ${form.lng}`}
+    readOnly
+  />
+</Field>
+                  <Field label="Latitude">
+  <input
+    type="number"
+    className={inputCls}
+    placeholder="35.6971"
+    value={form.lat}
+    onChange={(e) =>
+      setForm({ ...form, lat: Number(e.target.value) })
+    }
+  />
+</Field>
+                 <Field label="Longitude">
+  <input
+    type="number"
+    className={inputCls}
+    placeholder="-0.6308"
+    value={form.lng}
+    onChange={(e) =>
+      setForm({ ...form, lng: Number(e.target.value) })
+    }
+  />
+</Field>
                 </div>
               </section>
 
@@ -184,9 +350,37 @@ export default function MissionsPage() {
                   Target Area
                 </h3>
                 <div className="space-y-3">
-                  <Field label="Target area"><input className={inputCls} placeholder="Algeria, Oran" /></Field>
-                  <Field label="Target latitude"><input className={inputCls} placeholder="35.7000" /></Field>
-                  <Field label="Target longitude"><input className={inputCls} placeholder="-0.6500" /></Field>
+                  <Field label="Target area">
+  <input
+    className={inputCls}
+    value={form.targetArea}
+    onChange={(e) =>
+      setForm({ ...form, targetArea: e.target.value })
+    }
+  />
+</Field>
+
+<Field label="Target latitude">
+  <input
+    type="number"
+    className={inputCls}
+    value={form.targetLat}
+    onChange={(e) =>
+      setForm({ ...form, targetLat: Number(e.target.value) })
+    }
+  />
+</Field>
+
+<Field label="Target longitude">
+  <input
+    type="number"
+    className={inputCls}
+    value={form.targetLng}
+    onChange={(e) =>
+      setForm({ ...form, targetLng: Number(e.target.value) })
+    }
+  />
+</Field>
                   <p className="text-xs text-green-400/80">Mission destination coordinates.</p>
                 </div>
               </section>
@@ -200,7 +394,9 @@ export default function MissionsPage() {
               >
                 ⊗ Cancel
               </button>
-              <button className="px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold shadow-lg shadow-green-500/30 transition">
+              <button
+              onClick={handleAddMission}
+               className="px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold shadow-lg shadow-green-500/30 transition">
                 Launch mission
               </button>
             </div>
@@ -225,26 +421,44 @@ export default function MissionsPage() {
           <div>Location</div>
           <div>Target area</div>
         </div>
-        <ul className="divide-y divide-white/5 text-white/70">
-          {missions.map((m, i) => (
-            <li
-              key={i}
-              className="grid grid-cols-[0.5fr_1.2fr_1fr_0.8fr_1fr_1.1fr_1.1fr_1.1fr] items-center gap-4 px-6 py-4 text-sm transition-colors hover:bg-white/5"
-            >
-              <div className="font-medium">{m.id}</div>
-              <TypeCell type={m.type} />
-              <div><StatusPill status={m.status} /></div>
-              <div>{m.payload}</div>
-              <div><UrgencyPill urgency={m.urgency} /></div>
-              <div className="text-xs leading-tight">
-                <div>{m.time}</div>
-                <div className="text-muted-foreground">• {m.date}</div>
-              </div>
-              <div>{m.location}</div>
-              <div>{m.target}</div>
-            </li>
-          ))}
-        </ul>
+       <ul>
+  {missions?.map((m) => (
+    <li
+  key={m._id}
+  className="grid grid-cols-[0.5fr_1.2fr_1fr_0.8fr_1fr_1.1fr_1.1fr_1.1fr] gap-4 px-6 py-4 border-b border-white/5"
+>
+  <div>{m._id.slice(-5)}</div>
+
+  <div>{m.type}</div>
+
+  <div>
+    <StatusPill status={m.status} />
+  </div>
+
+  <div>{m.payloadWeight} kg</div>
+
+  <div>
+    <UrgencyPill urgency={m.urgency} />
+  </div>
+
+  <div>
+   {m.startedAt
+  ? new Date(m.startedAt).toLocaleString()
+  : m.createdAt
+    ? new Date(m.createdAt).toLocaleString()
+    : "—"}
+  </div>
+
+  <div>
+    📍 {m.departureLocation?.lat}, {m.departureLocation?.lng}
+  </div>
+
+  <div>
+    🎯 {m.targetArea?.lat}, {m.targetArea?.lng}
+  </div>
+</li>
+  ))}
+</ul>
       </Glass>
     </AppShell>
     </div>

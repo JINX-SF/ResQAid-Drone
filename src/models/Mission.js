@@ -32,11 +32,10 @@ const MissionSchema = new mongoose.Schema(
     },
 
    
-    start: {
-      x: { type: Number, default: 0 },
-      y: { type: Number, default: 0 },
-      z: { type: Number, default: 0 },
-    },
+   departureLocation: {
+  lat: { type: Number, default: 0 },
+  lng: { type: Number, default: 0 },
+},
     destination: {
       x: { type: Number, default: 0 },
       y: { type: Number, default: 0 },
