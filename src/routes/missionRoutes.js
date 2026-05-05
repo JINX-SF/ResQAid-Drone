@@ -11,5 +11,6 @@ router.delete("/:id", protect, restrictTo("admin"), ctrl.deleteMission);
 router.patch("/:id/assign-drone", protect,adminOnly, ctrl.assignDrone);
 router.patch("/:id/assign-survivor", protect,adminOnly, ctrl.assignSurvivor);
 router.patch("/:id/status", protect,adminOnly, ctrl.updateMissionStatus);
+router.put("/:id", protect,adminOnly, ctrl.updateMission);
 
 module.exports = router;

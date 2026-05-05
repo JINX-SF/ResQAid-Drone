@@ -4,6 +4,7 @@ import AppShell from "@/components/AppShell";
 
 import { useEffect, useState } from "react";
 import API from "@/api";
+import { useNavigate } from "react-router-dom";
 
 type Status = "completed" | "pending" | "active";
 type Urgency = "critical" | "minor" | "low";
@@ -120,6 +121,7 @@ function Field({
   );
 };
 export default function MissionsPage() {
+  const navigate = useNavigate();
   const [missions, setMissions] = useState<Mission[]>([]);
 const [open, setOpen] = useState(false);
 
@@ -199,6 +201,18 @@ setMissions(
   } catch (err: any) {
     console.log("BACKEND ERROR:", err.response?.data);
     alert(err.response?.data?.message || "Error adding mission");
+  }
+};
+
+const handleDeleteMission = async (id: string) => {
+  try {
+    await API.delete(`/missions/${id}`);
+
+    setMissions((prev) => prev.filter((m) => m._id !== id));
+
+  } catch (err) {
+    console.error(err);
+    alert("Error deleting mission");
   }
 };
 
@@ -421,6 +435,7 @@ setMissions(
           <div>Location</div>
           <div>Target area</div>
         </div>
+        <div className="text-right">Actions</div>
        <ul>
   {missions?.map((m) => (
     <li
@@ -456,6 +471,26 @@ setMissions(
   <div>
     🎯 {m.targetArea?.lat}, {m.targetArea?.lng}
   </div>
+
+  <div className="flex justify-end gap-2">
+
+  {/* EDIT */}
+  <button
+    onClick={() => navigate(`/missions/edit/${m._id}`)}
+    className="text-blue-400"
+  >
+    ✏️
+  </button>
+
+  {/* DELETE */}
+  <button
+    onClick={() => handleDeleteMission(m._id)}
+    className="text-red-400"
+  >
+    🗑
+  </button>
+
+</div>
 </li>
   ))}
 </ul>

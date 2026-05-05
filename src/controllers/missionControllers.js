@@ -89,6 +89,24 @@ exports.assignDrone = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.updateMission = async (req, res) => {
+  const { lat, lng, ...rest } = req.body;
+
+  const mission = await Mission.findByIdAndUpdate(
+    req.params.id,
+    {
+      ...rest,
+      departureLocation: {
+        lat,
+        lng,
+      },
+    },
+    { new: true }
+  );
+
+  res.json({ success: true, data: mission });
+};
+
 exports.assignSurvivor = async (req, res, next) => {
   try {
     const { survivorId } = req.body;

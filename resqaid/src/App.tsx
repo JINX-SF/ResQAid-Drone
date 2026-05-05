@@ -24,6 +24,8 @@ import MissionsPage from "./pages/MissionsPage";
 import Forgot from "./pages/forgot";
 import AdminRoute from "./components/AdminRoute";
 import EditDrone from "./pages/EditDrone";
+import EditMission from "./pages/EditMission";
+
 import Reset from "./pages/reset";
 
 
@@ -68,6 +70,7 @@ const App = () => (
           <Route path="/dronespage" element={ <AdminRoute> <DronesPage /> </AdminRoute> } />
           <Route path="/missionsPage" element={ <AdminRoute> <MissionsPage/> </AdminRoute> } />
            <Route path="/drones/edit/:id" element={<EditDrone />} />
+           <Route path="/missions/edit/:id" element={<EditMission />} />
 
 
         </Routes>
