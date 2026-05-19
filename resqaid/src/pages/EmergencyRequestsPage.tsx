@@ -38,20 +38,19 @@ function KindIcon({ kind }: { kind: Kind }) {
   }
 }
 
-function UrgencyPill({ urgency }: any) {
-  const normalized = urgency?.toLowerCase();
-
-  const styles: Record<string, string> = {
-    critical: "bg-destructive text-destructive-foreground",
-    medium: "bg-orange-500 text-white",
-    low: "bg-primary text-primary-foreground",
-  };
+function UrgencyPill({ urgency }: { urgency: string }) {
+  const styles =
+    urgency === "critical"
+      ? "bg-red-600 text-white border border-red-400 shadow-[0_0_15px_rgba(255,0,0,0.8)]"
+      : urgency === "high"
+      ? "bg-orange-500 text-white"
+      : urgency === "medium"
+      ? "bg-yellow-500 text-black"
+      : "bg-green-500 text-white";
 
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${
-        styles[normalized] || styles.low
-      }`}
+      className={`rounded-full px-4 py-1 text-xs font-bold uppercase ${styles}`}
     >
       {urgency}
     </span>
@@ -106,70 +105,77 @@ console.log(reqs);
         <div className="bg-black/40 px-6 py-4">
           <h2 className="text-2xl font-semibold text-white/80">Emergency requests</h2>
         </div>
-        <div className="grid grid-cols-[0.7fr_1.5fr_1fr_1fr_1fr_1.2fr_1fr] gap-4 border-b border-white/10 bg-black/30 px-6 py-3 text-xs uppercase tracking-wider text-muted-foreground">
-          <div>ID</div>
-          <div>Type</div>
-          <div>Urgency</div>
-          <div>Time</div>
-          <div>Location</div>
-          <div>Status</div>
-          <div className="text-right">Actions</div>
-        </div>
+       <ul className="grid grid-cols-[0.7fr_1.5fr_1fr_1fr_1fr_2fr] gap-4 px-6 py-3 text-xs uppercase tracking-wider text-white/40">
+  <li>ID</li>
+  <li>Type</li>
+  <li>Urgency</li>
+  <li>Time</li>
+  <li>Location</li>
+
+ <li className="flex justify-between w-full min-w-[350px]">
+  <span>Action</span>
+  <span>Status</span>
+</li>
+</ul>
         <ul className="divide-y text-white/70 divide-white/5">
           {reqs.map((r, i) => (
-            <li
-              key={i}
-              className="grid grid-cols-[0.7fr_1.5fr_1fr_1fr_1fr_1.2fr_1fr] items-center gap-4 px-6 py-4 text-sm transition-colors hover:bg-white/5"
-            >
-             <div className="font-medium">
-  {r._id?.slice(-6)}
-</div>
-
-<div className="flex items-center gap-3">
-  <KindIcon kind={r.type || "medical"} />
-
-  <div className="flex flex-col">
-    <span>{r.type}</span>
-
-    <span className="text-xs text-white/50">
-      {r.user?.name || "Unknown user"}
-    </span>
+           <li
+  key={i}
+  className="grid grid-cols-[0.7fr_1.5fr_1fr_1fr_1fr_2fr] items-center gap-4 px-6 py-4 text-sm transition-colors hover:bg-white/5"
+>
+  <div className="font-medium">
+    {r._id?.slice(-6)}
   </div>
-</div>
-<div className="flex items-center gap-2">
-  <UrgencyPill
-    urgency={(r.urgency || "low").toLowerCase()}
-  />
 
-  <span
-    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-      r.status === "accepted"
-        ? "bg-green-500 text-white"
-        : r.status === "rejected"
-        ? "bg-red-500 text-white"
-        : "bg-yellow-500 text-black"
-    }`}
-  >
-    {r.status || "pending"}
-  </span>
-</div>
+  <div className="flex items-center gap-3">
+    <KindIcon kind={r.type || "medical"} />
 
-<div className="text-white/70">
-  {new Date(r.createdAt).toLocaleTimeString()}
-</div>
+    <div className="flex flex-col">
+      <span className="capitalize">{r.type}</span>
 
-<div className="text-white/70">
-  {r.location?.name || "Unknown"}
-</div>
-              <div className="flex justify-end">
-                <button
-               onClick={() => navigate(`/requests/${r._id}`)}
-                
-                className="rounded-lg bg-primary/80 px-6 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary">
-                  review
-                </button>
-              </div>
-            </li>
+      <span className="text-xs text-white/50">
+        {r.user?.name || "Unknown user"}
+      </span>
+    </div>
+  </div>
+
+  <div className="flex items-center gap-2">
+    <UrgencyPill
+      urgency={(r.urgency || "low").toLowerCase()}
+    />
+  </div>
+
+  <div className="text-white/70">
+    {new Date(r.createdAt).toLocaleTimeString()}
+  </div>
+
+  <div className="text-white/70">
+    {r.location?.name || "Unknown"}
+  </div>
+
+  <div className="flex items-center justify-between w-full min-w-[350px]">
+    
+    <button
+      onClick={() => navigate(`/requests/${r._id}`)}
+      className="rounded-xl bg-emerald-500 px-6 py-2 text-xs font-semibold text-white transition-all hover:bg-emerald-400 shadow-lg"
+    >
+      Review
+    </button>
+
+    <span
+      className={`rounded-full px-4 py-1 text-xs font-bold ${
+        r.status === "accepted"
+          ? "bg-green-500 text-white"
+          : r.status === "rejected"
+          ? "bg-red-500 text-white"
+          : "bg-yellow-500 text-black"
+      }`}
+    >
+      {r.status || "pending"}
+    </span>
+
+  </div>
+</li>
           ))}
         </ul>
       </Glass>
