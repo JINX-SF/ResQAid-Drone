@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import {
   MapPin,
@@ -52,6 +53,7 @@ function StepBadge({ n, label, sub }: { n: number; label: string; sub: string })
 }
 
 const RequestAssistancePage = () => { 
+  const navigate = useNavigate();
   const [service, setService] = useState<"medical" | "delivery">("medical");
 
 const [selectedService, setSelectedService] = useState("SAR");
@@ -196,6 +198,14 @@ const [selectedLocation, setSelectedLocation] = useState({
             <p className="mb-5 text-xs text-muted-foreground">
               Fill in the details below to request drone support. Our team will respond as quickly as possible.
             </p>
+            <div className="flex justify-end mb-4">
+  <button
+    onClick={() => navigate("/my-requests")}
+    className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-white font-semibold transition"
+  >
+    My Requests
+  </button>
+</div>
             <div className="grid grid-cols-2 gap-3 text-white sm:grid-cols-4">
               <StepBadge n={1} label="Service" sub="What do you need?" />
               <StepBadge n={2} label="Location" sub="Where are you?" />

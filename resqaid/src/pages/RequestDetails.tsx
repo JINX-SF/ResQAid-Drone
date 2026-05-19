@@ -127,7 +127,7 @@ export default function RequestDetails() {
             <div className="flex items-center gap-4">
               <Phone className="text-green-400" />
               <span>
-                {request.phone || "No phone"}
+               {request.phone || request.user?.phone || "No phone"}
               </span>
             </div>
 
@@ -135,8 +135,9 @@ export default function RequestDetails() {
               <MapPin className="text-green-400" />
 
               <span>
-                {request.location?.lat},
-                {request.location?.lng}
+                {request.location?.name || "Unknown location"}
+<br />
+{request.location?.lat}, {request.location?.lng}
               </span>
             </div>
 

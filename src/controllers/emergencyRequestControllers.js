@@ -58,6 +58,20 @@ exports.getRequests = async (req, res, next) => {
     next(err);
   }
 };
+exports.getMyRequests = async (req, res, next) => {
+  try {
+    const requests = await EmergencyRequest.find({
+      user: req.user._id,
+    }).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: requests,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
 exports.getEmergencyRequests = async (req, res, next) => {
   try {

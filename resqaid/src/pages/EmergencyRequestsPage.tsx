@@ -106,19 +106,20 @@ console.log(reqs);
         <div className="bg-black/40 px-6 py-4">
           <h2 className="text-2xl font-semibold text-white/80">Emergency requests</h2>
         </div>
-        <div className="grid grid-cols-[0.7fr_1.5fr_1fr_1fr_1.2fr_1fr] gap-4 border-b border-white/10 bg-black/30 px-6 py-3 text-xs uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-[0.7fr_1.5fr_1fr_1fr_1fr_1.2fr_1fr] gap-4 border-b border-white/10 bg-black/30 px-6 py-3 text-xs uppercase tracking-wider text-muted-foreground">
           <div>ID</div>
           <div>Type</div>
           <div>Urgency</div>
           <div>Time</div>
           <div>Location</div>
+          <div>Status</div>
           <div className="text-right">Actions</div>
         </div>
         <ul className="divide-y text-white/70 divide-white/5">
           {reqs.map((r, i) => (
             <li
               key={i}
-              className="grid grid-cols-[0.7fr_1.5fr_1fr_1fr_1.2fr_1fr] items-center gap-4 px-6 py-4 text-sm transition-colors hover:bg-white/5"
+              className="grid grid-cols-[0.7fr_1.5fr_1fr_1fr_1fr_1.2fr_1fr] items-center gap-4 px-6 py-4 text-sm transition-colors hover:bg-white/5"
             >
              <div className="font-medium">
   {r._id?.slice(-6)}
@@ -126,13 +127,31 @@ console.log(reqs);
 
 <div className="flex items-center gap-3">
   <KindIcon kind={r.type || "medical"} />
-  <span>{r.type}</span>
-</div>
 
-<div>
+  <div className="flex flex-col">
+    <span>{r.type}</span>
+
+    <span className="text-xs text-white/50">
+      {r.user?.name || "Unknown user"}
+    </span>
+  </div>
+</div>
+<div className="flex items-center gap-2">
   <UrgencyPill
     urgency={(r.urgency || "low").toLowerCase()}
   />
+
+  <span
+    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+      r.status === "accepted"
+        ? "bg-green-500 text-white"
+        : r.status === "rejected"
+        ? "bg-red-500 text-white"
+        : "bg-yellow-500 text-black"
+    }`}
+  >
+    {r.status || "pending"}
+  </span>
 </div>
 
 <div className="text-white/70">

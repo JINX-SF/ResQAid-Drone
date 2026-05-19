@@ -26,6 +26,7 @@ import AdminRoute from "./components/AdminRoute";
 import EditDrone from "./pages/EditDrone";
 import EditMission from "./pages/EditMission";
 import RequestDetails from "./pages/RequestDetails";
+import MyRequestsPage from "./pages/MyRequestsPage";
 
 import Reset from "./pages/reset";
 
@@ -74,6 +75,7 @@ const App = () => (
            <Route path="/missions/edit/:id" element={<EditMission />} />
 
            <Route path="/requests/:id" element={<RequestDetails />} />
+           <Route path="/my-requests" element={<MyRequestsPage />} />
 
 
         </Routes>
