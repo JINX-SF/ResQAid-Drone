@@ -1,189 +1,456 @@
-import { useState } from "react";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/dashboard/Header";
-import StatsCards from "@/components/dashboard/StatsCards";
-import DroneOverview from "@/components/dashboard/DroneOverview";
-import ActivityFeed from "@/components/dashboard/ActivityFeed";
-import EmergencyRequests from "@/components/dashboard/EmergencyRequests";
-import { Package, Plus } from "lucide-react";
-import rescueBg from "@/assets/rescue-bg.jpg";
-import DroneIcon from "@/components/DroneIcon";
+import {
+  Bell,
+  Search,
+  User,
+  MapPin,
+  Battery,
+  Radio,
+  Activity,
+  AlertTriangle,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-type Status = "in mission" | "active" | "offline";
-type DType = "Search & rescue" | "Delivery";
+export default function DashboardPage() {
+const [missions, setMissions] = useState([]);
+const [requests, setRequests] = useState([]);
+const [drones, setDrones] = useState([]);
+const [users, setUsers] = useState([]);
 
-function StatusPill({ status }: { status: Status }) {
-  const styles: Record<Status, string> = {
-    "in mission": "bg-primary text-primary-foreground",
-    active: "bg-blue-500 text-white",
-    offline: "bg-destructive text-destructive-foreground",
-  };
+const todayUsers = users.filter((u: any) => {
+  const created = new Date(u.createdAt);
+
+  const today = new Date();
+
   return (
-    <span
-      className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium ${styles[status]}`}
-    >
-      {status}
-    </span>
+    created.getDate() === today.getDate() &&
+    created.getMonth() === today.getMonth() &&
+    created.getFullYear() === today.getFullYear()
   );
-}
+});
 
-function TypeCell({ type }: { type: DType }) {
-  if (type === "Delivery") {
-    return (
-      <div className="flex items-center gap-2">
-        <Package className="h-5 w-5 text-warning" />
-        <span>Delivery</span>
-      </div>
+const criticalRequests = requests.filter(
+  (r: any) =>
+    r.urgency?.toLowerCase() === "critical"
+);
+const chargingDrones = drones.filter(
+  (d: any) => d.battery <= 20
+);
+
+useEffect(() => {
+  fetchDashboardData();
+}, []);
+
+const fetchDashboardData = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    // MISSIONS
+    const missionsRes = await axios.get(
+      "http://localhost:5000/api/missions",
+      config
     );
-  }
-  return <span>Search &amp; rescue</span>;
-}
 
-const Dashboard = () => {
-  
-     const [open, setOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+    // DRONES
+    const dronesRes = await axios.get(
+      "http://localhost:5000/api/drones",
+      config
+    );
+
+    // REQUESTS
+    const requestsRes = await axios.get(
+      "http://localhost:5000/api/emergency-requests",
+      config
+    );
+
+    // USERS
+    const usersRes = await axios.get(
+      
+      "http://localhost:5000/api/auth/users",
+      config
+      
+    );
+    console.log("USERS RESPONSE:", usersRes.data);
+
+    console.log("MISSIONS RESPONSE:", missionsRes.data);
+
+    setMissions(missionsRes.data.data || []);
+
+    setDrones(dronesRes.data.data || []);
+
+    setRequests(requestsRes.data.data || []);
+
+   setUsers(usersRes.data.users || []);
+
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 
   return (
-    <div>
-  {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-white/5 backdrop-blur-2xl shadow-2xl shadow-green-500/10 p-6 text-white"
-          >
-            {/* Header */}
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-green-400 flex items-center gap-2">
-                <DroneIcon className="w-10 h-10 shrink-0 mr-2"/>    Add New Drone
-              </h2>
-              <p className="text-sm text-white/60">
-                Register a new drone to your fleet for mission deployment.
-              </p>
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+
+      {/* Background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-40"
+        style={{
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2070&auto=format&fit=crop')",
+        }}
+      />
+
+      <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" />
+
+      {/* Main */}
+      <div className="relative z-10 p-8">
+
+        {/* TOP BAR */}
+        <div className="flex items-center justify-between mb-10">
+
+          <div>
+            <h1 className="text-5xl font-bold tracking-tight">
+              Dashboard
+            </h1>
+
+            <p className="text-white/60 mt-2 text-lg">
+              Rescue command center overview
+            </p>
+          </div>
+
+          <div className="flex items-center gap-5">
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-4 top-3.5 h-5 w-5 text-white/40" />
+
+              <input
+                type="text"
+                placeholder="Search drones, missions, requests..."
+                className="w-[360px] rounded-2xl border border-white/10 bg-white/10 px-12 py-3 text-white placeholder:text-white/40 backdrop-blur-xl outline-none focus:border-emerald-400"
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 1. Basic Info */}
-              <section className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
-                <h3 className="flex items-center gap-2 mb-4 font-semibold">
-                  <span className="w-7 h-7 rounded-full bg-green-500/20 text-green-400/20 flex items-center justify-center text-sm">1</span>
-                  Basic Information
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Drone name"><input className={inputCls} /></Field>
-                  <Field label="Drone type">
-                    <select className={inputCls}><option>Quadcopter</option><option>Hexacopter</option></select>
-                  </Field>
-                  <Field label="Status" full>
-                    <select className={inputCls}><option>Available</option><option>In Mission</option></select>
-                  </Field>
-                </div>
-              </section>
+            {/* Icons */}
+            <button className="rounded-xl border border-white/10 bg-white/10 p-3 hover:bg-white/20 transition">
+              <Bell className="h-5 w-5" />
+            </button>
 
-              {/* 4. Home Base */}
-              <section className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
-                <h3 className="flex items-center gap-2 mb-4 font-semibold">
-                  <span className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-sm">4</span>
-                  Home Base
-                </h3>
-                <div className="space-y-3">
-                  <Field label="Base latitude"><input className={inputCls} /></Field>
-                  <Field label="Base longitude"><input className={inputCls} /></Field>
-                  <Field label="Base altitude"><input className={inputCls} /></Field>
-                  <p className="text-xs text-green-400/80">This is the drone's current GPS position.</p>
-                </div>
-              </section>
+            <button className="rounded-xl border border-white/10 bg-white/10 p-3 hover:bg-white/20 transition">
+              <User className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
 
-              {/* 2. Performance */}
-              <section className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
-                <h3 className="flex items-center gap-2 mb-4 font-semibold">
-                  <span className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-sm">2</span>
-                  Performance Specifications
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Speed (m/s)"><input className={inputCls} /></Field>
-                  <Field label="Max range"><input className={inputCls} /></Field>
-                  <Field label="Payload Capacity (kg)"><input className={inputCls} /></Field>
-                  <Field label="Battery (%)"><input className={inputCls} /></Field>
-                </div>
-              </section>
+        {/* STATS */}
+        <div className="grid grid-cols-4 gap-6 mb-8">
 
-              {/* 3. Location */}
-              <section className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
-                <h3 className="flex items-center gap-2 mb-4 font-semibold">
-                  <span className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-sm">3</span>
-                  Current Location
-                </h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <Field label="Latitude"><input className={inputCls} /></Field>
-                  <Field label="Longitude"><input className={inputCls} /></Field>
-                  <Field label="Altitude (m)"><input className={inputCls} /></Field>
-                </div>
-                <p className="text-xs text-green-400/80 mt-3">This is the drone's current GPS position.</p>
-              </section>
+          {/* CARD */}
+          <div className="rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl p-6">
+            <div className="flex items-center justify-between">
+
+              <div>
+                <p className="text-white/60 text-sm">
+                  Active missions
+                </p>
+
+               <h2 className="text-4xl font-bold mt-2">
+  {missions?.length || 0}
+</h2>
+
+                <p className="text-emerald-400 mt-2 text-sm">
+                 {
+  missions.filter((m) => m.status === "assigned")?.length || 0
+} currently active
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-emerald-500/20 p-4">
+                <Activity className="h-8 w-8 text-emerald-400" />
+              </div>
             </div>
+          </div>
 
-            {/* Footer */}
-            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
-              <button
-                onClick={() => setOpen(false)}
-                className="px-6 py-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 backdrop-blur-xl transition"
-              >
-                ⊗ Cancel
-              </button>
-              <button className="px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold shadow-lg shadow-green-500/30 transition">
-                Add drone to your base
-              </button>
+          {/* CARD */}
+          <div className="rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl p-6">
+            <div className="flex items-center justify-between">
+
+              <div>
+                <p className="text-white/60 text-sm">
+                  Available drones
+                </p>
+
+                <h2 className="text-4xl font-bold mt-2">
+                 {
+  drones.filter((d) => d.status === "idle")?.length || 0
+}
+                </h2>
+
+                <p className="text-cyan-400 mt-2 text-sm">
+                  {chargingDrones.length} charging...
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-cyan-500/20 p-4">
+                <Radio className="h-8 w-8 text-cyan-400" />
+              </div>
+            </div>
+          </div>
+
+          {/* CARD */}
+          <div className="rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl p-6">
+            <div className="flex items-center justify-between">
+
+              <div>
+                <p className="text-white/60 text-sm">
+                  Pending requests
+                </p>
+
+                <h2 className="text-4xl font-bold mt-2">
+                {
+  requests.filter((r) => r.status === "pending")?.length || 0
+}
+                </h2>
+
+                <p className="text-red-400 mt-2 text-sm">
+                  {criticalRequests.length} critical alerts
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-red-500/20 p-4">
+                <AlertTriangle className="h-8 w-8 text-red-400" />
+              </div>
+            </div>
+          </div>
+
+          {/* CARD */}
+          <div className="rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl p-6">
+            <div className="flex items-center justify-between">
+
+              <div>
+                <p className="text-white/60 text-sm">
+                  Registered users
+                </p>
+
+                <h2 className="text-4xl font-bold mt-2">
+                 {users?.length || 0}
+                </h2>
+
+                <p className="text-yellow-400 mt-2 text-sm">
+                 +{todayUsers.length} today
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-yellow-500/20 p-4">
+                <User className="h-8 w-8 text-yellow-400" />
+              </div>
             </div>
           </div>
         </div>
-      )}
-    
-    <div
-  className="flex h-screen overflow-hidden bg-cover bg-center"
-  style={{ backgroundImage: `url(${rescueBg})` }}
->
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header />
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-black">Dashboard</h1>
-            <button onClick={()=>{setOpen(!open)}} className="bg-primary text-primary-foreground px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium hover:opacity-90 transition-opacity">
-              <Plus className="w-4 h-4" />
-              Add drone
-            </button>
-          </div>
-          <StatsCards />
-          <div className="grid grid-cols-3 gap-6">
-            <div className="col-span-2">
-              <DroneOverview />
+
+        {/* MAIN GRID */}
+        <div className="grid grid-cols-[1.7fr_1fr] gap-6 mb-8">
+
+          {/* DRONES */}
+          <div className="rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl p-7">
+
+            <div className="flex items-center justify-between mb-7">
+              <h2 className="text-3xl font-bold">
+                Drone Overview
+              </h2>
+
+              <button className="rounded-xl border border-white/10 bg-white/10 px-5 py-2 hover:bg-white/20 transition">
+                View all
+              </button>
             </div>
-            <ActivityFeed />
+
+            <div className="space-y-5">
+
+              {drones.slice(0, 3).map((d) => (
+                <div
+                 key={d._id}
+                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 p-5"
+                >
+                  <div className="flex items-center gap-5">
+
+                    <div className="rounded-2xl bg-cyan-500/20 p-4">
+                      <Radio className="h-7 w-7 text-cyan-400" />
+                    </div>
+
+                    <div>
+                      <h3 className="text-xl font-semibold">
+                       {d.name}
+                      </h3>
+
+                      <p className="text-white/50">
+                        Search & rescue
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-8">
+
+                    <div className="text-right">
+                      <p className="text-white/50 text-sm">
+                        Battery
+                      </p>
+
+                      <div className="flex items-center gap-2 mt-1">
+                        <Battery className="h-4 w-4 text-emerald-400" />
+                        <span className="font-semibold">
+                        {d.battery}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-white/50 text-sm">
+                        Location
+                      </p>
+
+                      <div className="flex items-center gap-2 mt-1">
+                        <MapPin className="h-4 w-4 text-red-400" />
+                        <span className="font-semibold">
+                        {d.location?.lat}, {d.location?.lng}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span className="rounded-full bg-emerald-500/20 px-5 py-2 text-sm font-semibold text-emerald-400 border border-emerald-500/30">
+                     {d.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div>
-            <EmergencyRequests />
+
+          {/* ACTIVITY */}
+          <div className="rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl p-7">
+
+            <div className="flex items-center justify-between mb-7">
+              <h2 className="text-3xl font-bold">
+                Activity
+              </h2>
+
+              <button className="rounded-xl border border-white/10 bg-white/10 px-5 py-2 hover:bg-white/20 transition">
+                View all
+              </button>
+            </div>
+
+            <div className="space-y-6">
+
+             {(missions || []).slice(0, 4).map((m) => (
+  <div
+    key={m._id}
+    className="flex gap-4"
+  >
+    <div
+      className={`mt-2 h-3 w-3 rounded-full ${
+        m.status === "completed"
+          ? "bg-emerald-400"
+          : m.status === "assigned"
+          ? "bg-cyan-400"
+          : "bg-yellow-400"
+      }`}
+    />
+
+    <div>
+      <p className="font-medium text-white">
+        Mission {m._id?.slice(-5)} {m.status}
+      </p>
+
+      <span className="text-sm text-white/40">
+        {new Date(m.createdAt).toLocaleString()}
+      </span>
+    </div>
+  </div>
+))}
+            </div>
           </div>
-        </main>
+        </div>
+
+        {/* EMERGENCY REQUESTS */}
+        <div className="rounded-3xl border border-white/10 bg-white/10 backdrop-blur-xl p-7">
+
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-bold">
+              Emergency Requests
+            </h2>
+
+            <span className="rounded-full bg-red-500/20 px-5 py-2 text-sm font-semibold text-red-400 border border-red-500/30">
+              {criticalRequests.length} critical 
+            </span>
+          </div>
+
+          <div className="space-y-5">
+
+           {requests.slice(0, 5).map((r) => (
+  <div
+    key={r._id}
+    className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 p-5"
+  >
+    <div className="flex items-center gap-6">
+
+      <div className="rounded-2xl bg-red-500/20 p-4">
+        <AlertTriangle className="h-6 w-6 text-red-400" />
+      </div>
+
+      <div>
+        <h3 className="text-xl font-semibold text-white">
+          {r.type}
+        </h3>
+
+        <p className="text-white/50">
+          {r._id?.slice(-5)}
+        </p>
       </div>
     </div>
+
+    <div className="flex items-center gap-10">
+
+      <div className="text-center">
+        <p className="text-white/40 text-sm">
+          Status
+        </p>
+
+        <span className="mt-2 inline-block rounded-full bg-yellow-500/20 px-4 py-2 text-sm font-semibold text-yellow-300 border border-yellow-500/20">
+          {r.status}
+        </span>
+      </div>
+
+      <div className="text-center">
+        <p className="text-white/40 text-sm">
+          Urgency
+        </p>
+
+        <span className="mt-2 inline-block rounded-full bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-400 border border-red-500/20">
+          {r.urgency}
+        </span>
+      </div>
+
+      <div className="text-center">
+        <p className="text-white/40 text-sm">
+          Time
+        </p>
+
+        <p className="mt-2 font-semibold text-white">
+          {new Date(r.createdAt).toLocaleString()}
+        </p>
+      </div>
     </div>
-  );
-};
+  </div>
+))}
+          </div>
+        </div>
 
-export default Dashboard;
-
-const inputCls =
-  "w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md text-white placeholder-white/40 focus:outline-none focus:border-green-400/60 focus:bg-white/10 transition";
-
-function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
-  return (
-    <div className={full ? "col-span-2" : ""}>
-      <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">{label}</label>
-      {children}
+      </div>
     </div>
   );
 }

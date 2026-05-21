@@ -12,13 +12,31 @@ type DType = "Search & rescue" | "Delivery";
 
 function StatusPill({ status }: { status: Status }) {
   const styles: Record<Status, string> = {
-    "in mission": "bg-primary text-primary-foreground",
-    active: "bg-blue-500 text-white",
-    offline: "bg-destructive text-destructive-foreground",
+    "in mission":
+      "bg-cyan-500/15 text-cyan-200 border border-cyan-400/30",
+
+    active:
+      "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30",
+
+    offline:
+      "bg-red-500/15 text-red-200 border border-red-400/30",
   };
+
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium ${styles[status]}`}
+      className={`
+        inline-flex
+        items-center
+        rounded-xl
+        px-4
+        py-2
+        text-sm
+        font-bold
+        uppercase
+        tracking-wide
+        backdrop-blur-md
+        ${styles[status]}
+      `}
     >
       {status}
     </span>
@@ -168,16 +186,16 @@ const handleAddDrone = async () => {
   }
 };
 
-const handleDelete = async (id: string) => {
+const disableDrone = async (id: string) => {
   try {
-    await API.delete(`/drones/${id}`);
+    await API.patch(`/drones/${id}/disable`);
 
-    // remove from UI instantly
-    setDrones((prev) => prev.filter((d) => d._id !== id));
-
+    // instantly remove drone from UI
+    setDrones((prev: any) =>
+      prev.filter((d: any) => d._id !== id)
+    );
   } catch (err) {
     console.error(err);
-    alert("Error deleting drone");
   }
 };
 
@@ -404,7 +422,7 @@ const handleEdit = (drone) => {
           </button>
           
         </div>
-        <div className="grid grid-cols-[0.7fr_1.3fr_1fr_0.8fr_1.2fr_1fr] gap-4 border-b border-white/10 bg-black/30 px-6 py-3 text-xs uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.4fr] items-center gap-6 border-b border-white/10 bg-black/30 px-8 py-5 text-sm font-bold uppercase tracking-[0.18em] text-white/80">
           <div>ID</div>
           <div>Type</div>
           <div>Status</div>
@@ -415,34 +433,99 @@ const handleEdit = (drone) => {
         <ul className="divide-y text-white/70 divide-white/5">
           {drones?.map((d) => (
             <li
-              key={d._id}
-              className="grid grid-cols-[0.7fr_1.3fr_1fr_0.8fr_1.2fr_1fr] items-center gap-4 px-6 py-4 text-sm transition-colors hover:bg-white/5"
-            >
-            <div className="font-medium">
-  {d._id ? d._id.slice(-5) : "N/A"}
-</div>
-              <TypeCell type={d.type} />
-              <div>
-                <StatusPill status={(d.status || "").toLowerCase() as Status} />
-              </div>
-              <div>{d.battery}%</div>
-              <div className="flex items-center gap-2 text-white/70">
-                <MapPin className="h-4 w-4 text-primary" />
-                <span> {d.location
-      ? `${d.location.lat}, ${d.location.lng}`
-      : "No location"}</span>
-              </div>
+               key={d._id}
+  className="
+    grid
+    grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.4fr]
+    items-center
+    gap-6
+    px-8
+    py-6
+    border-b
+    border-white/5
+    text-sm
+    text-white/80
+    transition-all
+    duration-300
+    hover:bg-white/[0.04]
+  "
+>
+  {/* ID */}
+  <div className="font-semibold text-white/90">
+    {d._id ? d._id.slice(-5) : "N/A"}
+  </div>
+
+  {/* TYPE */}
+  <div className="font-medium text-white/90">
+    <TypeCell type={d.type} />
+  </div>
+
+  {/* STATUS */}
+  <div>
+    <StatusPill
+      status={(d.status || "").toLowerCase() as Status}
+    />
+  </div>
+
+  {/* BATTERY */}
+  <div className="font-medium text-white/80">
+    {d.battery}%
+  </div>
+
+  {/* LOCATION */}
+  <div className="flex items-center gap-2 text-white/70">
+    <MapPin className="h-4 w-4 text-emerald-400" />
+
+    <span>
+      {d.location
+        ? `${d.location.lat}, ${d.location.lng}`
+        : "No location"}
+    </span>
+  </div>
+
+  {/* ACTIONS */}
               <div className="flex justify-end gap-2">
                 <button
-  onClick={() => handleDelete(d._id)}
-  className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/30 text-muted-foreground hover:text-destructive"
+  onClick={() => disableDrone(d._id)}
+  className="
+    rounded-xl
+    bg-red-500/90
+    px-4
+    py-2
+    text-sm
+    font-semibold
+    text-white
+
+    transition-all
+    duration-300
+    hover:scale-105
+    hover:bg-red-400
+   
+    active:scale-95
+  "
 >
-  <Trash2 className="h-4 w-4" />
+  Disable
 </button>
                 <button 
                  onClick={() => navigate(`/drones/edit/${d._id}`)}
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/30 text-muted-foreground hover:text-blue-600">
+                 className="
+    rounded-xl
+    bg-green-500/90
+    px-4
+    py-2
+    text-sm
+    font-semibold
+    text-white
+
+    transition-all
+    duration-300
+    hover:scale-105
+    hover:bg-green-400
+   
+    active:scale-95
+  ">
                   <Pencil className="h-4 hover:text-blue-400 w-4" />
+                  Edit
                 </button>
               </div>
             </li>

@@ -16,8 +16,15 @@ exports.createDrone = async (req, res, next) => {
 exports.getDrones = async (req, res, next) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
-    const filter = {};
-    if (status) filter.status = status;
+
+    const filter = {
+      status: { $ne: "disabled" }, // hide disabled drones
+    };
+
+    // if frontend requests a specific status
+    if (status) {
+      filter.status = status;
+    }
 
     const drones = await Drone.find(filter)
       .sort({ createdAt: -1 })
@@ -25,6 +32,7 @@ exports.getDrones = async (req, res, next) => {
       .limit(Number(limit));
 
     const total = await Drone.countDocuments(filter);
+
     res.json({
       success: true,
       total,
@@ -32,7 +40,9 @@ exports.getDrones = async (req, res, next) => {
       pages: Math.ceil(total / limit),
       data: drones,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.getDrone = async (req, res, next) => {
@@ -198,6 +208,55 @@ exports.gotoLocation = async (req, res, next) => {
       estimatedSeconds: totalSteps,
     });
   } catch (err) { next(err); }
+};
+
+exports.disableDrone = async (req, res, next) => {
+  try {
+    const drone = await Drone.findById(req.params.id);
+
+    if (!drone) {
+      return res.status(404).json({
+        success: false,
+        message: "Drone not found",
+      });
+    }
+
+    drone.status = "disabled";
+
+    await drone.save();
+
+    res.json({
+      success: true,
+      message: "Drone disabled",
+      data: drone,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.reactivateDrone = async (req, res, next) => {
+  try {
+    const drone = await Drone.findByIdAndUpdate(
+      req.params.id,
+      { status: "idle" },
+      { new: true }
+    );
+
+    res.json({ success: true, data: drone });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getDisabledDrones = async (req, res, next) => {
+  try {
+    const drones = await Drone.find({ status: "disabled" });
+
+    res.json({ success: true, data: drones });
+  } catch (err) {
+    next(err);
+  }
 };
 
 // returns drone to its home base

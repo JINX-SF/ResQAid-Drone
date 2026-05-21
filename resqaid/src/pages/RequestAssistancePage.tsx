@@ -1,4 +1,6 @@
- import { useState } from "react";
+
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import {
   MapPin,
@@ -51,7 +53,25 @@ function StepBadge({ n, label, sub }: { n: number; label: string; sub: string })
 }
 
 const RequestAssistancePage = () => { 
-  const [service, setService] = useState<"rescue" | "delivery">("rescue");
+  const navigate = useNavigate();
+  const [service, setService] = useState<"medical" | "delivery">("medical");
+
+const [selectedService, setSelectedService] = useState("SAR");
+
+const [description, setDescription] = useState("");
+
+const [peopleCount, setPeopleCount] = useState(1);
+
+const [condition, setCondition] = useState("Conscious");
+
+const [injuryType, setInjuryType] = useState("Other");
+
+const [selectedLocation, setSelectedLocation] = useState({
+  address: "",
+  lat: 0,
+  lng: 0,
+});
+
   const [people, setPeople] = useState("1");
   const [conditions, setConditions] = useState<string[]>(["Conscious", "Trapped"]);
   const [urgencyTypes, setUrgencyTypes] = useState<string[]>(["Bleeding"]);
@@ -60,6 +80,63 @@ const RequestAssistancePage = () => {
   const [locationLabel, setLocationLabel] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [locating, setLocating] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const submitRequest = async () => {
+  try {
+    setLoading(true);
+
+    const token = localStorage.getItem("token");
+
+    const payload = {
+  type: service,
+
+  description,
+
+  urgency:
+    urgency.charAt(0).toUpperCase() +
+    urgency.slice(1),
+
+  people,
+
+  conditions,
+
+  urgencyTypes,
+
+  locationName: locationLabel,
+
+  lat: location?.lat || 0,
+  lng: location?.lng || 0,
+};
+
+    console.log("SENDING:", payload);
+
+    const res = await fetch("http://localhost:5000/api/emergency-requests", {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+
+        Authorization: `Bearer ${token}`,
+      },
+
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    console.log("REQUEST CREATED:", data);
+
+    alert("Emergency request sent successfully ✅");
+
+  } catch (err) {
+    console.error(err);
+
+    alert("Failed to send request");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const useMyLocation = () => {
     if (!navigator.geolocation) return;
@@ -77,14 +154,14 @@ const RequestAssistancePage = () => {
 
   const handleMapPick = (ll: LatLng) => {
     setLocation(ll);
-    setLocationLabel(`Lat: ${ll.lat.toFixed(5)} · Lon: ${ll.lng.toFixed(5)}`);
+    setLocationLabel(`Lat:${ll.lat.toFixed(5)} · Lon: ${ll.lng.toFixed(5)}`);
   };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1 `
       );
       const data = await res.json();
       if (data.length > 0) {
@@ -113,15 +190,22 @@ const RequestAssistancePage = () => {
       
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-6">
         {/* Top bar */}
-        
 
-        <div className="space-y-4">
+<div className="space-y-4">
           {/* Header card */}
           <Glass className="p-5">
             <h2 className="text-lg text-white font-semibold">Request assistance</h2>
             <p className="mb-5 text-xs text-muted-foreground">
               Fill in the details below to request drone support. Our team will respond as quickly as possible.
             </p>
+            <div className="flex justify-end mb-4">
+  <button
+    onClick={() => navigate("/my-requests")}
+    className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-white font-semibold transition"
+  >
+    My Requests
+  </button>
+</div>
             <div className="grid grid-cols-2 gap-3 text-white sm:grid-cols-4">
               <StepBadge n={1} label="Service" sub="What do you need?" />
               <StepBadge n={2} label="Location" sub="Where are you?" />
@@ -135,14 +219,14 @@ const RequestAssistancePage = () => {
             <StepBadge n={1} label="Service" sub="What type of assistance do you need?" />
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <button
-                onClick={() => setService("rescue")}
+                onClick={() => setService("medical")}
                 className={`relative rounded-xl border p-5 text-left transition ${
-                  service === "rescue"
+                  service === "medical"
                     ? "border-primary bg-primary/10"
                     : "border-white/10 bg-black/30 hover:border-white/20"
                 }`}
               >
-                {service === "rescue" && (
+                {service === "medical" && (
                   <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
                     <Check className="h-4 w-4" />
                   </div>
@@ -182,7 +266,8 @@ const RequestAssistancePage = () => {
             </div>
           </Glass>
 
-          {/* Step 2 — Location */}
+
+{/* Step 2 — Location */}
           <Glass className="p-5">
             <StepBadge n={2} label="Location" sub="Where are you or where is assistance needed?" />
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -245,7 +330,8 @@ const RequestAssistancePage = () => {
             </div>
           </Glass>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+
+<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* Step 3 — Details */}
             <Glass className="p-5">
               <StepBadge n={3} label="Details" sub="Tell us more about your situation" />
@@ -316,7 +402,8 @@ const RequestAssistancePage = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+
+<div className="flex items-center gap-3">
                   <AlertTriangle className="h-4 w-4 text-destructive" />
                   <span className="w-24 text-muted-foreground">Urgency</span>
                   <div className="flex gap-2">
@@ -351,8 +438,10 @@ const RequestAssistancePage = () => {
               <div className="mt-4 space-y-3 text-sm">
                 <label className="block text-xs text-muted-foreground">Describe the situation</label>
                 <textarea
-                  rows={5}
-                  className="w-full resize-none rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                    rows={5}
+  value={description}
+  onChange={(e) => setDescription(e.target.value)}
+  className="w-full rounded-lg border border-white/10 bg-black/30 p-3 text-white"
                   placeholder="Describe what happened…"
                 />
                 <div className="flex items-center justify-between gap-2">
@@ -368,18 +457,21 @@ const RequestAssistancePage = () => {
                   <input type="checkbox" className="accent-primary" />
                   Share my location with rescue team
                 </label>
-                <a
-                  href="/confirmation"
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground hover:opacity-90"
-                >
-                  <Send className="h-4 w-4" />
-                  Confirm and send request
-                </a>
+               <button
+  onClick={submitRequest}
+  disabled={loading}
+  className="w-full rounded-xl bg-green-600 py-4 font-semibold text-white flex items-center justify-center gap-2"
+>
+  <Send className="h-4 w-4" />
+
+  {loading ? "Sending..." : "Confirm and send request"}
+</button>
               </div>
             </Glass>
           </div>
 
-          {/* Quick SOS */}
+
+{/* Quick SOS */}
           <div className="flex items-center justify-between rounded-2xl border border-destructive/40 bg-destructive/80 px-5 py-3 backdrop-blur-xl">
             <div className="flex items-center gap-3">
               <Siren className="h-5 w-5 text-destructive-foreground" />

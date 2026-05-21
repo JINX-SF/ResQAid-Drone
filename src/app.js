@@ -9,12 +9,21 @@ const droneRoutes = require("./routes/droneRoutes");
 const missionRoutes = require("./routes/missionRoutes");
 const survivorRoutes = require ("./routes/survivorRoutes");
 const authRoutes = require("./routes/authRoutes");
+const emergencyRequestRoutes = require("./routes/emergencyRequestRoutes");
+
 
 const notFound = require("./middleware/notFound");
 const errorHandler = require("./middleware/errorHandler");
 const app = express();
+app.use(express.json());
 
 app.use(cors());
+
+app.use("/api/auth", authRoutes);
+app.use("/api/missions", missionRoutes);
+app.use("/api/drones", droneRoutes);
+app.use("/api/emergency-requests", emergencyRequestRoutes);
+
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(

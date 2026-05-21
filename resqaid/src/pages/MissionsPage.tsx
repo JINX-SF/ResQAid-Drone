@@ -6,14 +6,15 @@ import { useEffect, useState } from "react";
 import API from "@/api";
 import { useNavigate } from "react-router-dom";
 
-type Status = "completed" | "pending" | "active";
+
+type Status = "completed" |"assigned" | "pending" | "active";
 type Urgency = "critical" | "minor" | "low";
 type MType = "Search & rescue" | "Delivery";
 
 type Mission = {
   _id: string;
   type: string;
-  status: "completed" | "pending" | "active";
+  status: "completed" |"assigned"| "pending" | "active";
   payloadWeight: number;
   urgency: "critical" | "minor" | "low";
   startTime: string;
@@ -33,12 +34,23 @@ type Mission = {
 
 function StatusPill({ status }: { status: Status }) {
   const styles: Record<Status, string> = {
-    completed: "bg-green-600 text-white",
-    pending: "bg-destructive text-destructive-foreground",
-    active: "bg-blue-500 text-white",
+    completed:
+      "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40",
+
+    pending:
+      "bg-yellow-500/20 text-yellow-100 border border-yellow-400/40",
+
+    active:
+      "bg-blue-500/20 text-blue-100 border border-blue-400/40",
+
+    assigned:
+      "bg-cyan-500/20 text-cyan-100 border border-cyan-400/40",
   };
+
   return (
-    <span className={`inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium ${styles[status]}`}>
+    <span
+      className={`inline-flex w-fit items-center rounded-xl px-4 py-2 text-sm font-bold uppercase tracking-wide backdrop-blur-md ${styles[status]}`}
+    >
       {status}
     </span>
   );
@@ -48,21 +60,33 @@ function UrgencyPill({ urgency }: { urgency: string }) {
   const key = (urgency || "").toLowerCase();
 
   const styles: any = {
-    low: { bg: "bg-green-500/20 text-green-400" },
-    medium: { bg: "bg-yellow-500/20 text-yellow-400" },
-    high: { bg: "bg-orange-500/20 text-orange-400" },
-    critical: { bg: "bg-red-500/20 text-red-400" },
+    low: {
+      cls: "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30",
+    },
+
+    medium: {
+      cls: "bg-yellow-500/15 text-yellow-100 border border-yellow-400/30",
+    },
+
+    high: {
+      cls: "bg-orange-500/15 text-orange-100 border border-orange-400/30",
+    },
+
+    critical: {
+      cls: "bg-red-500/15 text-red-100 border border-red-400/30",
+    },
   };
 
   const style = styles[key] || styles.low;
 
   return (
-    <span className={`px-2 py-1 rounded ${style.bg}`}>
+    <span
+      className={`inline-flex w-fit items-center rounded-xl px-4 py-2 text-sm font-bold uppercase tracking-wide backdrop-blur-md ${style.cls}`}
+    >
       {urgency}
     </span>
   );
 }
-
 function TypeCell({ type }: { type: MType }) {
   if (type === "Delivery") {
     return (
@@ -79,6 +103,7 @@ const inputCls =
 
 function StatusBadge({ status }: { status: Mission["status"] }) {
   const styles = {
+    assigned: "bg-cyan-500 text-white shadow-lg shadow-cyan-500/40",
     completed: "bg-green-500 text-white",
     pending: "bg-red-500 text-white",
     active: "bg-blue-500 text-white",
@@ -204,15 +229,15 @@ setMissions(
   }
 };
 
-const handleDeleteMission = async (id: string) => {
+const disableMission = async (id: string) => {
   try {
-    await API.delete(`/missions/${id}`);
+    await API.patch(`/missions/${id}/disable`);
 
-    setMissions((prev) => prev.filter((m) => m._id !== id));
-
+    setMissions((prev: any) =>
+      prev.filter((m: any) => m._id !== id)
+    );
   } catch (err) {
     console.error(err);
-    alert("Error deleting mission");
   }
 };
 
@@ -279,6 +304,7 @@ const handleDeleteMission = async (id: string) => {
     }
   >
     <option value="pending">Pending</option>
+    <option value="pending">Assigned</option>
     <option value="active">Active</option>
     <option value="completed">Completed</option>
   </select>
@@ -425,7 +451,7 @@ const handleDeleteMission = async (id: string) => {
             + Add mission
           </button>
         </div>
-        <div className="grid grid-cols-[0.5fr_1.2fr_1fr_0.8fr_1fr_1.1fr_1.1fr_1.1fr] gap-4 border-b border-white/10 bg-black/30 px-6 py-3 text-xs uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 border-b border-white/10 bg-black/30 px-8 py-5 text-sm font-bold uppercase tracking-[0.18em] text-white/70">
           <div>ID</div>
           <div>Type</div>
           <div>Status</div>
@@ -435,28 +461,31 @@ const handleDeleteMission = async (id: string) => {
           <div>Location</div>
           <div>Target area</div>
         </div>
-        <div className="text-right">Actions</div>
+        
        <ul>
   {missions?.map((m) => (
     <li
   key={m._id}
-  className="grid grid-cols-[0.5fr_1.2fr_1fr_0.8fr_1fr_1.1fr_1.1fr_1.1fr] gap-4 px-6 py-4 border-b border-white/5"
+  className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 px-8 py-5 border-b border-white/5 hover:bg-white/[0.03] transition-all"
 >
-  <div>{m._id.slice(-5)}</div>
+  <div  className="font-medium text-white/80">{m._id.slice(-5)}</div>
 
-  <div>{m.type}</div>
+  <div className="font-medium text-white/90">
+  {m.type}
+</div>
 
-  <div>
+  <div  className="font-medium text-white/90">
     <StatusPill status={m.status} />
   </div>
 
-  <div>{m.payloadWeight} kg</div>
+  <div className="font-medium text-white/85">
+  {m.payloadWeight} kg</div>
 
-  <div>
+  <div  className="font-medium text-white/80">
     <UrgencyPill urgency={m.urgency} />
   </div>
 
-  <div>
+  <div  className="font-medium text-white/80">
    {m.startedAt
   ? new Date(m.startedAt).toLocaleString()
   : m.createdAt
@@ -464,32 +493,57 @@ const handleDeleteMission = async (id: string) => {
     : "—"}
   </div>
 
-  <div>
+  <div  className="font-medium text-white/80">
     📍 {m.departureLocation?.lat}, {m.departureLocation?.lng}
   </div>
 
-  <div>
+  <div  className="font-medium text-white/80">
     🎯 {m.targetArea?.lat}, {m.targetArea?.lng}
   </div>
 
-  <div className="flex justify-end gap-2">
-
-  {/* EDIT */}
+  <div className="flex items-center justify-end gap-2">
   <button
     onClick={() => navigate(`/missions/edit/${m._id}`)}
-    className="text-blue-400"
-  >
-    ✏️
+    className="
+    rounded-xl
+    bg-green-500/90
+    px-4
+    py-2
+    text-sm
+    font-semibold
+    text-white
+
+    transition-all
+    duration-300
+    hover:scale-105
+    hover:bg-green-400
+   
+    active:scale-95
+  ">
+    Edit
   </button>
 
-  {/* DELETE */}
   <button
-    onClick={() => handleDeleteMission(m._id)}
-    className="text-red-400"
+    onClick={() => disableMission(m._id)}
+    className="
+    rounded-xl
+    bg-red-500/90
+    px-4
+    py-2
+    text-sm
+    font-semibold
+    text-white
+ 
+    transition-all
+    duration-300
+    hover:scale-105
+    hover:bg-red-400
+   
+    active:scale-95
+  "
   >
-    🗑
+    Disable
   </button>
-
 </div>
 </li>
   ))}

@@ -25,8 +25,11 @@ import Forgot from "./pages/forgot";
 import AdminRoute from "./components/AdminRoute";
 import EditDrone from "./pages/EditDrone";
 import EditMission from "./pages/EditMission";
+import RequestDetails from "./pages/RequestDetails";
+import MyRequestsPage from "./pages/MyRequestsPage";
+import DisabledItemsPage from "./pages/DisabledItemsPage";
 
-import Reset from "./pages/reset";
+import Reset from "./pages/Reset";
 
 
 const queryClient = new QueryClient();
@@ -71,6 +74,10 @@ const App = () => (
           <Route path="/missionsPage" element={ <AdminRoute> <MissionsPage/> </AdminRoute> } />
            <Route path="/drones/edit/:id" element={<EditDrone />} />
            <Route path="/missions/edit/:id" element={<EditMission />} />
+
+           <Route path="/requests/:id" element={<RequestDetails />} />
+           <Route path="/my-requests" element={<MyRequestsPage />} />
+           <Route path="/disabled" element={<DisabledItemsPage />} />
 
 
         </Routes>

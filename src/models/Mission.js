@@ -10,11 +10,18 @@ const MissionSchema = new mongoose.Schema(
       default: "general",
     },
 
-    status: {
-      type: String,
-      enum: ["pending", "active", "completed"],
-      default: "pending",
-    },
+  status: {
+  type: String,
+  enum: [
+    "pending",
+    "assigned",
+    "active",
+    "completed",
+    "cancelled",
+   "disabled",
+  ],
+  default: "pending",
+},
 
     urgency: {
       type: String,

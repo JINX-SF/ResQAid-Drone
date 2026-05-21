@@ -1,48 +1,21 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import API from "@/api";
 
-export default function  OAuthSuccess() {
+export default function OAuthSuccess() {
   const navigate = useNavigate();
 
-  /*useEffect(() => {
+  useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("token");
 
-    if (token) {
-      localStorage.setItem("token", token);
-      navigate("/");
-    } else {
+    if (!token) {
       navigate("/login");
+      return;
     }
-  }, [navigate]);*/
 
- /* useEffect(() => {
-  const token = new URLSearchParams(window.location.search).get("token");
-
-  if (token) {
+    // ✅ Save token
     localStorage.setItem("token", token);
 
-    API.get("/auth/me").then((res) => {
-      const user = res.data.user;
-
-      if (!user.phone || !user.birthday) {
-        navigate("/infos");
-      } else {
-        navigate("/controle");
-      }
-    });
-
-  } else {
-    navigate("/login");
-  }
-}, [navigate]);*/
-
-useEffect(() => {
-  const token = new URLSearchParams(window.location.search).get("token");
-
-  if (token) {
-    localStorage.setItem("token", token);
-
+    // ✅ Get user
     fetch("http://localhost:5000/api/auth/me", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -50,17 +23,25 @@ useEffect(() => {
     })
       .then((res) => res.json())
       .then((data) => {
-        // 🔥 SAVE USER HERE
-        localStorage.setItem("user", JSON.stringify(data.user));
+        const user = data.user;
 
-        // 👇 redirect logic
-        if (!data.user.birthday) {
-          navigate("/infos"); // NEW USER
+        // save user
+        localStorage.setItem("user", JSON.stringify(user));
+
+        // 🎯 REDIRECT LOGIC
+        if (!user.phone || !user.birthday) {
+          navigate("/infos");
+        } else if (user.role === "admin") {
+          navigate("/controle");
         } else {
-          navigate("/controle"); // EXISTING USER
+          navigate("/requestpage"); // ✅ THIS IS WHAT YOU WANT
         }
+      })
+      .catch(() => {
+        navigate("/login");
       });
-  }
-}, []);
+
+  }, [navigate]);
+
   return <h2>Logging you in...</h2>;
 }

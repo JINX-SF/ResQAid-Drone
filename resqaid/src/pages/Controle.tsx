@@ -40,7 +40,7 @@ const Controle = () => {
       {/* Background image */}
       <div
         className="fixed inset-0 bg-cover bg-center"
-        style={{ backgroundImage:` url(${rescueBg})` }}
+        style={{ backgroundImage:` url(${rescueBg}) ` }}
       />
       <div className="fixed inset-0 bg-black/40" />
 
@@ -94,7 +94,8 @@ const Controle = () => {
                   </div>
                 </div>
 
-                {/* Toggle button — tap to switch */}
+
+{/* Toggle button — tap to switch */}
                 <button
                   onClick={() => setMainView(mainView === "camera" ? "map" : "camera")}
                   className="absolute bottom-4 right-4 z-20 flex items-cente r gap-2 bg-black/70 hover:bg-black/90 border border-white/20 text-white text-xs font-mono px-3 py-2 rounded-lg backdrop-blur-sm transition"

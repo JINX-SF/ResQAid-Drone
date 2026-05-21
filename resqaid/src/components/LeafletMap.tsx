@@ -105,7 +105,8 @@ export default function LeafletMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── helper: upsert a marker ───────────────────────────────────────────────
+
+// ── helper: upsert a marker ───────────────────────────────────────────────
   function upsert(
     ref:   React.MutableRefObject<L.Marker | null>,
     pin:   LatLng | null | undefined,
@@ -143,7 +144,7 @@ export default function LeafletMap({
     upsert(targetMarker, targetPin, targetIcon, "🎯 Target");
   }, [targetPin]);
 
-  // ── draw / update route line between drone ↔ target ──────────────────────
+  // ── draw / update route line between drone ↔️ target ──────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
