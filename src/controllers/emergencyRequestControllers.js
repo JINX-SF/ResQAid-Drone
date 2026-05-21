@@ -1,4 +1,6 @@
 const EmergencyRequest = require("../models/EmergencyRequest");
+const Mission = require("../models/Mission");
+const Drone = require("../models/Drone");
 
 exports.createRequest = async (req, res, next) => {
   try {
@@ -121,13 +123,70 @@ exports.acceptRequest = async (req, res, next) => {
     }
 
     request.status = "accepted";
-
     await request.save();
+
+    const mission = await Mission.create({
+      title: `Emergency mission - ${request.type}`,
+
+      type: request.type === "medical" ? "general" : "SAR",
+
+      status: "pending",
+
+      urgency: request.urgency || "Low",
+
+      payloadWeight: 0,
+
+      targetArea: {
+        lat: request.location?.lat || 0,
+        lng: request.location?.lng || 0,
+        radiusKm: 1,
+      },
+
+      start: {
+        x: 0,
+        y: 0,
+        z: 0,
+      },
+
+      destination: {
+        x: request.location?.lat || 0,
+        y: request.location?.lng || 0,
+        z: 0,
+      },
+
+      description: request.description || "",
+
+      request: request._id,
+    });
+
+  // FIND BEST AVAILABLE DRONE
+const availableDrone = await Drone.findOne({
+  status: "idle",
+})
+.sort({ battery: -1 });
+
+if (availableDrone) {
+
+  // ASSIGN DRONE TO MISSION
+  mission.drone = availableDrone._id;
+
+  mission.status = "assigned";
+
+  await mission.save();
+
+  // UPDATE DRONE STATUS
+  availableDrone.status = "in_mission";
+
+  await availableDrone.save();
+}
 
     res.json({
       success: true,
-      message: "Mission accepted",
-      data: request,
+      message: "Request accepted and mission created",
+      data: {
+        request,
+        mission,
+      },
     });
   } catch (err) {
     next(err);

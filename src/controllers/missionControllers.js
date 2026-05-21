@@ -2,6 +2,7 @@ const Mission = require("../models/Mission");
 const Drone = require("../models/Drone");
 const Survivor = require("../models/Survivor");
 
+
 const allowedNext = {
   pending: ["active"],
   active: ["completed"],
@@ -10,31 +11,61 @@ const allowedNext = {
 
 exports.createMission = async (req, res, next) => {
   try {
-    const { title, payloadWeight, lat, lng, ...rest } = req.body;
-    if (!title)
-      return res.status(400).json({ success: false, message: "title is required" });
-    if (payloadWeight != null && payloadWeight < 0)
-      return res.status(400).json({ success: false, message: "payloadWeight cannot be negative" });
+    // CREATE MISSION
+    const mission = await Mission.create(req.body);
 
-const mission = await Mission.create({
-  ...rest,
-  title,
-  payloadWeight,
+    // FIND BEST AVAILABLE DRONE
+    const bestDrone = await Drone.findOne({
+      status: "idle", // ONLY AVAILABLE DRONES
+      battery: { $gte: 40 }, // MINIMUM BATTERY
+    }).sort({
+      battery: -1, // HIGHEST BATTERY FIRST
+    });
 
-  departureLocation: {
-    lat,
-    lng,
-  },
-});
-    res.status(201).json({ success: true, data: mission });
-  } catch (err) { next(err); }
+    // IF DRONE FOUND
+    if (bestDrone) {
+      // ASSIGN DRONE TO MISSION
+      mission.drone = bestDrone._id;
+
+      // CHANGE MISSION STATUS
+      mission.status = "assigned";
+
+      await mission.save();
+
+      // CHANGE DRONE STATUS
+      bestDrone.status = "in_mission";
+
+      await bestDrone.save();
+
+      console.log(
+        `🚁 Drone ${bestDrone.name} auto assigned to mission`
+      );
+    } else {
+      console.log("❌ No available drone found");
+    }
+
+    res.status(201).json({
+      success: true,
+      data: mission,
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.getMissions = async (req, res, next) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
-    const filter = {};
-    if (status) filter.status = status;
+
+    // hide disabled missions
+    const filter = {
+      status: { $ne: "disabled" },
+    };
+
+    // if frontend requests specific status
+    if (status) {
+      filter.status = status;
+    }
 
     const missions = await Mission.find(filter)
       .populate("drone")
@@ -44,6 +75,7 @@ exports.getMissions = async (req, res, next) => {
       .limit(Number(limit));
 
     const total = await Mission.countDocuments(filter);
+
     res.json({
       success: true,
       total,
@@ -51,7 +83,71 @@ exports.getMissions = async (req, res, next) => {
       pages: Math.ceil(total / limit),
       data: missions,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
+};
+exports.disableMission = async (req, res, next) => {
+  try {
+    const mission = await Mission.findById(req.params.id);
+
+    if (!mission) {
+      return res.status(404).json({
+        success: false,
+        message: "Mission not found",
+      });
+    }
+
+    mission.status = "disabled";
+
+    await mission.save();
+
+    res.json({
+      success: true,
+      data: mission,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.reactivateMission = async (req, res, next) => {
+  try {
+    const mission = await Mission.findById(req.params.id);
+
+    if (!mission) {
+      return res.status(404).json({
+        success: false,
+        message: "Mission not found",
+      });
+    }
+
+    mission.status = "pending";
+
+    await mission.save();
+
+    res.json({
+      success: true,
+      data: mission,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getDisabledMissions = async (req, res, next) => {
+  try {
+    const missions = await Mission.find({
+      status: "disabled",
+    });
+
+    res.json({
+      success: true,
+      data: missions,
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.getMission = async (req, res, next) => {

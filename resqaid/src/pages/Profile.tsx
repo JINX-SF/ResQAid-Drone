@@ -45,6 +45,12 @@ const navigate = useNavigate();
 }, [id]);
   if (!user) return <p>Loading...</p>;
 
+  const handleLogout = () => {
+  localStorage.removeItem("token");
+
+  navigate("/");
+};
+
   return (
     <div className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: `url(${rescueBg})` }}>
       <div className="min-h-screen bg-black/40">
@@ -69,6 +75,7 @@ const navigate = useNavigate();
           </div>
 
          <Button
+         onClick={handleLogout}
   variant="outline"
   size="sm"
   className="gap-2 bg-red-800/70 hover:bg-red-700/70 text-white"

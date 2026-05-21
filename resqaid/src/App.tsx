@@ -27,8 +27,9 @@ import EditDrone from "./pages/EditDrone";
 import EditMission from "./pages/EditMission";
 import RequestDetails from "./pages/RequestDetails";
 import MyRequestsPage from "./pages/MyRequestsPage";
+import DisabledItemsPage from "./pages/DisabledItemsPage";
 
-import Reset from "./pages/reset";
+import Reset from "./pages/Reset";
 
 
 const queryClient = new QueryClient();
@@ -76,6 +77,7 @@ const App = () => (
 
            <Route path="/requests/:id" element={<RequestDetails />} />
            <Route path="/my-requests" element={<MyRequestsPage />} />
+           <Route path="/disabled" element={<DisabledItemsPage />} />
 
 
         </Routes>
