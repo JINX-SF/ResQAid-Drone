@@ -9,10 +9,10 @@ const {
   createMission,
   updateMission,
   deleteMission,
-
   disableMission,
   reactivateMission,
   getDisabledMissions,
+  getMissionHistory,
 
 } = require("../controllers/missionControllers");
 
@@ -31,5 +31,7 @@ router.patch("/:id/assign-drone", protect,adminOnly, ctrl.assignDrone);
 router.patch("/:id/assign-survivor", protect,adminOnly, ctrl.assignSurvivor);
 router.patch("/:id/status", protect,adminOnly, ctrl.updateMissionStatus);
 router.put("/:id", protect,adminOnly, ctrl.updateMission);
+
+router.get("/:id/history",protect,getMissionHistory);
 
 module.exports = router;
