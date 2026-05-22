@@ -1,5 +1,5 @@
 import { Package } from "lucide-react";
-import {  Glass } from "@/components/AppShell";
+import { Glass } from "@/components/AppShell";
 import AppShell from "@/components/AppShell";
 
 import { useEffect, useState } from "react";
@@ -7,14 +7,14 @@ import API from "@/api";
 import { useNavigate } from "react-router-dom";
 
 
-type Status = "completed" |"assigned" | "pending" | "active";
+type Status = "completed" | "assigned" | "pending" | "active";
 type Urgency = "critical" | "minor" | "low";
 type MType = "Search & rescue" | "Delivery";
 
 type Mission = {
   _id: string;
   type: string;
-  status: "completed" |"assigned"| "pending" | "active";
+  status: "completed" | "assigned" | "pending" | "active";
   payloadWeight: number;
   urgency: "critical" | "minor" | "low";
   startTime: string;
@@ -28,7 +28,7 @@ type Mission = {
     lat: number;
     lng: number;
   };
-  startedAt?: string;   
+  startedAt?: string;
   createdAt?: string;
 };
 
@@ -87,6 +87,7 @@ function UrgencyPill({ urgency }: { urgency: string }) {
     </span>
   );
 }
+
 function TypeCell({ type }: { type: MType }) {
   if (type === "Delivery") {
     return (
@@ -98,35 +99,10 @@ function TypeCell({ type }: { type: MType }) {
   }
   return <span>Search &amp; rescue</span>;
 }
+
 const inputCls =
   "w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md text-white placeholder-white/40 focus:outline-none focus:border-green-400/60 focus:bg-white/10 transition";
 
-function StatusBadge({ status }: { status: Mission["status"] }) {
-  const styles = {
-    assigned: "bg-cyan-500 text-white shadow-lg shadow-cyan-500/40",
-    completed: "bg-green-500 text-white",
-    pending: "bg-red-500 text-white",
-    active: "bg-blue-500 text-white",
-  };
-  return (
-    <span className={`inline-block px-4 py-1 rounded-full text-xs font-semibold ${styles[status]}`}>
-      {status}
-    </span>
-  );
-}
-function UrgencyBadge({ urgency }: { urgency: Mission["urgency"] }) {
-  const config = {
-    critical: { dot: "bg-red-500", bg: "bg-red-500/15 text-red-300 border-red-500/30" },
-    minor: { dot: "bg-yellow-400", bg: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30" },
-    low: { dot: "bg-green-400", bg: "bg-green-500/15 text-green-300 border-green-500/30" },
-  }[urgency];
-  return (
-    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border ${config.bg}`}>
-      <span className={`w-2 h-2 rounded-full ${config.dot}`} />
-      {urgency}
-    </span>
-  );
-}
 function Field({
   label,
   children,
@@ -144,107 +120,171 @@ function Field({
       {children}
     </div>
   );
-};
+}
+
 export default function MissionsPage() {
   const navigate = useNavigate();
   const [missions, setMissions] = useState<Mission[]>([]);
-const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
-const [form, setForm] = useState({
-  title: "",
-  type: "SAR",
-  status: "pending",
-  payloadWeight: 0,
-  urgency: "Low",
-  startTime: "",
-  locationName: "",
-  lat: 0,
-  lng: 0,
-  targetArea: "",
-  targetLat: 0,
-  targetLng: 0,
-});
+  // STEP 3 FIX — state declarations must be right here, together
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
 
-useEffect(() => {
-  const fetchMissions = async () => {
+  const [form, setForm] = useState({
+    title: "",
+    type: "SAR",
+    status: "pending",
+    payloadWeight: 0,
+    urgency: "Low",
+    startTime: "",
+    locationName: "",
+    lat: 0,
+    lng: 0,
+    targetArea: "",
+    targetLat: 0,
+    targetLng: 0,
+  });
+
+  useEffect(() => {
+    const fetchMissions = async () => {
+      try {
+        const res = await API.get("/missions");
+        console.log("MISSIONS RESPONSE:", res.data);
+        setMissions(res.data?.data || []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchMissions();
+  }, []);
+
+  // STEP 2 FIX — full corrected handleAddMission (nothing escapes outside)
+  const handleAddMission = async () => {
     try {
+      const missionData = {
+        title: form.title || form.type,
+
+        type: form.type,
+
+        status: form.status,
+
+        payloadWeight: Number(form.payloadWeight),
+
+        urgency: form.urgency,
+
+        startTime: form.startTime,
+
+        departureLocation: {
+          name: form.locationName,
+
+          lat: Number(form.lat),
+
+          lng: Number(form.lng),
+        },
+
+        targetArea: {
+          name: form.targetArea,
+
+          lat: Number(form.targetLat),
+
+          lng: Number(form.targetLng),
+        },
+      };
+
+      console.log("SENDING MISSION:", missionData);
+
+      // EDIT MODE
+      if (isEditing && editingMissionId) {
+        await API.put(`/missions/${editingMissionId}`, missionData);
+
+        alert("Mission updated ✅");
+      }
+
+      // CREATE MODE
+      else {
+        await API.post("/missions", missionData);
+
+        alert("Mission added ✅");
+      }
+
+      // REFRESH MISSIONS
       const res = await API.get("/missions");
-      console.log("MISSIONS RESPONSE:", res.data);
-      setMissions(res.data?.data || []);
+
+      setMissions(
+        res.data?.missions ||
+        res.data?.data ||
+        res.data ||
+        []
+      );
+
+      // RESET MODAL
+      setOpen(false);
+
+      setIsEditing(false);
+
+      setEditingMissionId(null);
+
+    } catch (err: any) {
+      console.log("BACKEND ERROR:", err.response?.data);
+
+      alert(err.response?.data?.message || "Error adding mission");
+    }
+  };
+
+  const disableMission = async (id: string) => {
+    try {
+      await API.patch(`/missions/${id}/disable`);
+
+      setMissions((prev: any) =>
+        prev.filter((m: any) => m._id !== id)
+      );
     } catch (err) {
       console.error(err);
     }
   };
 
-  fetchMissions();
-}, []);
+  // STEP 4 FIX — corrected handleEditMission with proper nested field mapping
+  const handleEditMission = (mission: any) => {
+    setIsEditing(true);
 
-const handleAddMission = async () => {
-  try {
-    const missionData = {
-      title: form.title || form.type,
-      type: form.type,
-      status: form.status,
-      payloadWeight: Number(form.payloadWeight),
-      urgency: form.urgency,
-      startTime: form.startTime,
+    setEditingMissionId(mission._id);
 
-      departureLocation: {
-        name: form.locationName,
-        lat: Number(form.lat),
-        lng: Number(form.lng),
-      },
+    setForm({
+      title: mission.title || "",
 
-      targetArea: {
-        name: form.targetArea,
-        lat: Number(form.targetLat),
-        lng: Number(form.targetLng),
-      },
-    };
-console.log("SENDING:", {
-  lat: Number(form.lat),
-  lng: Number(form.lng),
-});
-console.log("FORM DATA:", form);
-    console.log("SENDING MISSION:", missionData);
+      type: mission.type || "SAR",
 
-    await API.post("/missions", missionData);
+      status: mission.status || "pending",
 
+      payloadWeight: mission.payloadWeight || 0,
 
+      urgency: mission.urgency || "Low",
 
-    const res = await API.get("/missions");
+      startTime: mission.startTime
+        ? mission.startTime.slice(0, 16)
+        : "",
 
-setMissions(
-  res.data?.missions ||
-  res.data?.data ||
-  res.data ||
-  []
-);
+      locationName: mission.departureLocation?.name || "",
 
-    setOpen(false);
-    alert("Mission added ✅");
-  } catch (err: any) {
-    console.log("BACKEND ERROR:", err.response?.data);
-    alert(err.response?.data?.message || "Error adding mission");
-  }
-};
+      lat: mission.departureLocation?.lat || 0,
 
-const disableMission = async (id: string) => {
-  try {
-    await API.patch(`/missions/${id}/disable`);
+      lng: mission.departureLocation?.lng || 0,
 
-    setMissions((prev: any) =>
-      prev.filter((m: any) => m._id !== id)
-    );
-  } catch (err) {
-    console.error(err);
-  }
-};
+      targetArea: mission.targetArea?.name || "",
 
+      targetLat: mission.targetArea?.lat || 0,
+
+      targetLng: mission.targetArea?.lng || 0,
+    });
+
+    setOpen(true);
+  };
 
   return (
     <div>
-    {open && (
+      {open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md"
           onClick={() => setOpen(false)}
@@ -256,17 +296,16 @@ const disableMission = async (id: string) => {
             {/* Header */}
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-green-400 flex items-center gap-2">
-                <span>🎯</span> New Mission
+                <span>🎯</span> {isEditing ? "Edit Mission" : "New Mission"}
               </h2>
               <p className="text-sm text-white/60">
-                Create a new mission and dispatch it to your fleet.
+                {isEditing
+                  ? "Update this mission information and save the changes."
+                  : "Create a new mission and dispatch it to your fleet."}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-
-
 
               {/* 1. Mission Info */}
               <section className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 md:col-span-2">
@@ -276,71 +315,75 @@ const disableMission = async (id: string) => {
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
 
-<Field label="Mission Title" full>
-  <input
-    className={inputCls}
-    placeholder="Rescue operation #1"
-    value={form.title}
-    onChange={(e) =>
-      setForm({ ...form, title: e.target.value })
-    }
-  />
-</Field>
+                  <Field label="Mission Title" full>
+                    <input
+                      className={inputCls}
+                      placeholder="Rescue operation #1"
+                      value={form.title}
+                      onChange={(e) =>
+                        setForm({ ...form, title: e.target.value })
+                      }
+                    />
+                  </Field>
 
-                <select
-  className={inputCls}
-  value={form.type}
-  onChange={(e) => setForm({ ...form, type: e.target.value })}
->
-  <option value="SAR">Search & rescue</option>
-  <option value="delivery">Delivery</option>
-</select>
+                  <select
+                    className={inputCls}
+                    value={form.type}
+                    onChange={(e) => setForm({ ...form, type: e.target.value })}
+                  >
+                    <option value="SAR">Search & rescue</option>
+                    <option value="delivery">Delivery</option>
+                  </select>
+
                   <Field label="Status">
-  <select
-    className={inputCls}
-    value={form.status}
-    onChange={(e) =>
-      setForm({ ...form, status: e.target.value.toLowerCase() })
-    }
-  >
-    <option value="pending">Pending</option>
-    <option value="pending">Assigned</option>
-    <option value="active">Active</option>
-    <option value="completed">Completed</option>
-  </select>
-</Field>
+                    <select
+                      className={inputCls}
+                      value={form.status}
+                      onChange={(e) =>
+                        setForm({ ...form, status: e.target.value.toLowerCase() })
+                      }
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="assigned">Assigned</option>
+                      <option value="active">Active</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </Field>
+
                   <input
-  className={inputCls}
-  type="number"
-  value={form.payloadWeight}
-  onChange={(e) =>
-    setForm({ ...form, payloadWeight: Number(e.target.value) })
-  }
-/>
+                    className={inputCls}
+                    type="number"
+                    value={form.payloadWeight}
+                    onChange={(e) =>
+                      setForm({ ...form, payloadWeight: Number(e.target.value) })
+                    }
+                  />
+
                   <Field label="Urgency">
-  <select
-  className={inputCls}
-  value={form.urgency}
-  onChange={(e) =>
-    setForm({ ...form, urgency: e.target.value })
-  }
->
-  <option value="Low">Low</option>
-  <option value="Medium">Medium</option>
-  <option value="High">High</option>
-  <option value="Critical">Critical</option>
-</select>
-</Field>
+                    <select
+                      className={inputCls}
+                      value={form.urgency}
+                      onChange={(e) =>
+                        setForm({ ...form, urgency: e.target.value })
+                      }
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                      <option value="Critical">Critical</option>
+                    </select>
+                  </Field>
+
                   <Field label="Start time">
-  <input
-    type="datetime-local"
-    className={inputCls}
-    value={form.startTime}
-    onChange={(e) =>
-      setForm({ ...form, startTime: e.target.value })
-    }
-  />
-</Field>
+                    <input
+                      type="datetime-local"
+                      className={inputCls}
+                      value={form.startTime}
+                      onChange={(e) =>
+                        setForm({ ...form, startTime: e.target.value })
+                      }
+                    />
+                  </Field>
                 </div>
               </section>
 
@@ -351,35 +394,35 @@ const disableMission = async (id: string) => {
                   Departure Location
                 </h3>
                 <div className="space-y-3">
-                 <Field label="Location">
-  <input
-    className={inputCls}
-    value={`📍 ${form.lat}, ${form.lng}`}
-    readOnly
-  />
-</Field>
+                  <Field label="Location">
+                    <input
+                      className={inputCls}
+                      value={`📍 ${form.lat}, ${form.lng}`}
+                      readOnly
+                    />
+                  </Field>
                   <Field label="Latitude">
-  <input
-    type="number"
-    className={inputCls}
-    placeholder="35.6971"
-    value={form.lat}
-    onChange={(e) =>
-      setForm({ ...form, lat: Number(e.target.value) })
-    }
-  />
-</Field>
-                 <Field label="Longitude">
-  <input
-    type="number"
-    className={inputCls}
-    placeholder="-0.6308"
-    value={form.lng}
-    onChange={(e) =>
-      setForm({ ...form, lng: Number(e.target.value) })
-    }
-  />
-</Field>
+                    <input
+                      type="number"
+                      className={inputCls}
+                      placeholder="35.6971"
+                      value={form.lat}
+                      onChange={(e) =>
+                        setForm({ ...form, lat: Number(e.target.value) })
+                      }
+                    />
+                  </Field>
+                  <Field label="Longitude">
+                    <input
+                      type="number"
+                      className={inputCls}
+                      placeholder="-0.6308"
+                      value={form.lng}
+                      onChange={(e) =>
+                        setForm({ ...form, lng: Number(e.target.value) })
+                      }
+                    />
+                  </Field>
                 </div>
               </section>
 
@@ -391,36 +434,36 @@ const disableMission = async (id: string) => {
                 </h3>
                 <div className="space-y-3">
                   <Field label="Target area">
-  <input
-    className={inputCls}
-    value={form.targetArea}
-    onChange={(e) =>
-      setForm({ ...form, targetArea: e.target.value })
-    }
-  />
-</Field>
+                    <input
+                      className={inputCls}
+                      value={form.targetArea}
+                      onChange={(e) =>
+                        setForm({ ...form, targetArea: e.target.value })
+                      }
+                    />
+                  </Field>
 
-<Field label="Target latitude">
-  <input
-    type="number"
-    className={inputCls}
-    value={form.targetLat}
-    onChange={(e) =>
-      setForm({ ...form, targetLat: Number(e.target.value) })
-    }
-  />
-</Field>
+                  <Field label="Target latitude">
+                    <input
+                      type="number"
+                      className={inputCls}
+                      value={form.targetLat}
+                      onChange={(e) =>
+                        setForm({ ...form, targetLat: Number(e.target.value) })
+                      }
+                    />
+                  </Field>
 
-<Field label="Target longitude">
-  <input
-    type="number"
-    className={inputCls}
-    value={form.targetLng}
-    onChange={(e) =>
-      setForm({ ...form, targetLng: Number(e.target.value) })
-    }
-  />
-</Field>
+                  <Field label="Target longitude">
+                    <input
+                      type="number"
+                      className={inputCls}
+                      value={form.targetLng}
+                      onChange={(e) =>
+                        setForm({ ...form, targetLng: Number(e.target.value) })
+                      }
+                    />
+                  </Field>
                   <p className="text-xs text-green-400/80">Mission destination coordinates.</p>
                 </div>
               </section>
@@ -435,78 +478,116 @@ const disableMission = async (id: string) => {
                 ⊗ Cancel
               </button>
               <button
-              onClick={handleAddMission}
-               className="px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold shadow-lg shadow-green-500/30 transition">
-                Launch mission
+                onClick={handleAddMission}
+                className="px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold shadow-lg shadow-green-500/30 transition"
+              >
+                {isEditing ? "Save Mission Changes" : "Launch mission"}
               </button>
             </div>
           </div>
         </div>
       )}
-    <AppShell>
-      <Glass className="overflow-hidden">
-        <div className="flex items-center justify-between bg-black/40 px-6 py-4">
-          <h2 className="text-2xl font-semibold text-white/80">All missions</h2>
-          <button onClick={() => setOpen(true)} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-            + Add mission
-          </button>
-        </div>
-        <div className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 border-b border-white/10 bg-black/30 px-8 py-5 text-sm font-bold uppercase tracking-[0.18em] text-white/70">
-          <div>ID</div>
-          <div>Type</div>
-          <div>Status</div>
-          <div>Payload</div>
-          <div>Urgency</div>
-          <div>Start time</div>
-          <div>Location</div>
-          <div>Target area</div>
-        </div>
-        
-       <ul>
-  {missions?.map((m) => (
-    <li
-  key={m._id}
-  className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 px-8 py-5 border-b border-white/5 hover:bg-white/[0.03] transition-all"
->
-  <div  className="font-medium text-white/80">{m._id.slice(-5)}</div>
 
-  <div className="font-medium text-white/90">
-  {m.type}
-</div>
+      <AppShell>
+        <Glass className="overflow-hidden">
+          <div className="flex items-center justify-between bg-black/40 px-6 py-4">
+            <h2 className="text-2xl font-semibold text-white/80">All missions</h2>
+            <button
+              onClick={() => {
+                setIsEditing(false);
 
-  <div  className="font-medium text-white/90">
-    <StatusPill status={m.status} />
-  </div>
+                setEditingMissionId(null);
 
-  <div className="font-medium text-white/85">
-  {m.payloadWeight} kg</div>
+                setForm({
+                  title: "",
+                  type: "SAR",
+                  status: "pending",
+                  payloadWeight: 0,
+                  urgency: "Low",
+                  startTime: "",
+                  locationName: "",
+                  lat: 0,
+                  lng: 0,
+                  targetArea: "",
+                  targetLat: 0,
+                  targetLng: 0,
+                });
 
-  <div  className="font-medium text-white/80">
-    <UrgencyPill urgency={m.urgency} />
-  </div>
+                setOpen(true);
+              }}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              +new mission
+            </button>
+          </div>
 
-  <div  className="font-medium text-white/80">
-   {m.startedAt
-  ? new Date(m.startedAt).toLocaleString()
-  : m.createdAt
-    ? new Date(m.createdAt).toLocaleString()
-    : "—"}
-  </div>
+          <div className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 border-b border-white/10 bg-black/30 px-8 py-5 text-sm font-bold uppercase tracking-[0.18em] text-white/70">
+            <div>ID</div>
+            <div>Type</div>
+            <div>Status</div>
+            <div>Payload</div>
+            <div>Urgency</div>
+            <div>Start time</div>
+            <div>Location</div>
+            <div>Target area</div>
+          </div>
 
-  <div  className="font-medium text-white/80">
-    📍 {m.departureLocation?.lat}, {m.departureLocation?.lng}
-  </div>
+          <ul>
+            {missions?.map((m) => (
+              <li
+                key={m._id}
+                className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 px-8 py-5 border-b border-white/5 hover:bg-white/[0.03] transition-all"
+              >
+                <div className="font-medium text-white/80">{m._id.slice(-5)}</div>
 
-  <div  className="font-medium text-white/80">
-    🎯 {m.targetArea?.lat}, {m.targetArea?.lng}
-  </div>
+                <div className="font-medium text-white/90">
+                  {m.type}
+                </div>
 
-  <div className="flex items-center justify-end gap-2">
-  <button
-    onClick={() => navigate(`/missions/edit/${m._id}`)}
-    className="
+                <div className="font-medium text-white/90">
+                  <StatusPill status={m.status} />
+                </div>
+
+                <div className="font-medium text-white/85">
+                  {m.payloadWeight} kg
+                </div>
+
+                <div className="font-medium text-white/80">
+                  <UrgencyPill urgency={m.urgency} />
+                </div>
+
+                <div className="font-medium text-white/80">
+                  {m.startedAt
+                    ? new Date(m.startedAt).toLocaleString()
+                    : m.createdAt
+                      ? new Date(m.createdAt).toLocaleString()
+                      : "—"}
+                </div>
+
+                <div className="font-medium text-white/80">
+                  📍 {m.departureLocation?.lat}, {m.departureLocation?.lng}
+                </div>
+
+                <div className="font-medium text-white/80">
+                  🎯 {m.targetArea?.lat}, {m.targetArea?.lng}
+                </div>
+
+                <div className="flex items-center justify-end gap-2">
+                  
+                  <button
+                    onClick={() => handleEditMission(m)}
+                    className="rounded-xl bg-green-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-green-400 active:scale-95"
+                  >
+                    Edit
+                  </button>
+<button
+  onClick={() =>
+    navigate(`/missions/${m._id}/history`)
+  }
+
+  className="
     rounded-xl
-    bg-green-500/90
+    bg-blue-500/90
     px-4
     py-2
     text-sm
@@ -516,40 +597,25 @@ const disableMission = async (id: string) => {
     transition-all
     duration-300
     hover:scale-105
-    hover:bg-green-400
-   
-    active:scale-95
-  ">
-    Edit
-  </button>
+    hover:bg-blue-400
 
-  <button
-    onClick={() => disableMission(m._id)}
-    className="
-    rounded-xl
-    bg-red-500/90
-    px-4
-    py-2
-    text-sm
-    font-semibold
-    text-white
- 
-    transition-all
-    duration-300
-    hover:scale-105
-    hover:bg-red-400
-   
     active:scale-95
   "
-  >
-    Disable
-  </button>
-</div>
-</li>
-  ))}
-</ul>
-      </Glass>
-    </AppShell>
+>
+  History
+</button>
+                  <button
+                    onClick={() => disableMission(m._id)}
+                    className="rounded-xl bg-red-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-red-400 active:scale-95"
+                  >
+                    Disable
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Glass>
+      </AppShell>
     </div>
   );
 }

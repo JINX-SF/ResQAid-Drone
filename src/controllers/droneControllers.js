@@ -1,4 +1,5 @@
 const Drone = require("../models/Drone");
+const DroneHistory = require("../models/DroneHistory");
 
 exports.createDrone = async (req, res, next) => {
   try {
@@ -55,16 +56,71 @@ exports.getDrone = async (req, res, next) => {
 };
 
 exports.updateDrone = async (req, res, next) => {
-  try {
-    const drone = await Drone.findByIdAndUpdate(
-      req.params.id, req.body, { new: true, runValidators: true }
-    );
-    if (!drone)
-      return res.status(404).json({ success: false, message: "Drone not found" });
-    res.json({ success: true, data: drone });
-  } catch (err) { next(err); }
-};
+  try { 
+    req.body.lastEditedBy = req.user?._id;
+    req.body.lastEditedAt = new Date();
 
+    const oldDrone = await Drone.findById(req.params.id);
+
+    if (!oldDrone) {
+      return res.status(404).json({
+        success: false,
+        message: "Drone not found",
+      });
+    }
+
+    // SAVE OLD DATA BEFORE UPDATE
+    const oldData = oldDrone.toObject();
+
+    // UPDATE DRONE
+    const updatedDrone = await Drone.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );// DETECT CHANGES
+    const changes = [];
+
+    Object.keys(req.body).forEach((key) => {
+      const oldValue = oldData[key];
+      const newValue = req.body[key];
+
+      if (
+        JSON.stringify(oldValue) !== JSON.stringify(newValue)
+      ) {
+        changes.push({
+          field: key,
+          oldValue,
+          newValue,
+        });
+      }
+    });
+    // SAVE HISTORY
+    await DroneHistory.create({
+      droneId: updatedDrone._id,
+
+      editedBy: req.user?._id,
+
+      editorName: req.user?.name || "Unknown User",
+
+      action: "updated",
+
+      changes,
+
+      previousData: oldData,
+
+      updatedData: updatedDrone,
+    });
+
+    res.json({
+      success: true,
+      data: updatedDrone, });
+  } catch (err) {
+    next(err);
+  }
+};
 exports.deleteDrone = async (req, res, next) => {
   try {
     const drone = await Drone.findByIdAndDelete(req.params.id);
@@ -72,6 +128,22 @@ exports.deleteDrone = async (req, res, next) => {
       return res.status(404).json({ success: false, message: "Drone not found" });
     res.json({ success: true, message: "Drone deleted" });
   } catch (err) { next(err); }
+};
+exports.getDroneHistory = async (req, res, next) => {
+  try {
+    const history = await DroneHistory.find({
+      droneId: req.params.id,
+    })
+      .sort({ createdAt: -1 })
+      .populate("editedBy", "name email");
+
+    res.json({
+      success: true,
+      data: history,
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 // ─── MANUAL DRONE CONTROL ─────────────────────────────────────────
 

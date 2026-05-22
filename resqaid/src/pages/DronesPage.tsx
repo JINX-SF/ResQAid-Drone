@@ -77,6 +77,8 @@ export default function DronesPage() {
 
 
    const [open, setOpen] = useState(false);
+   const [isEditing, setIsEditing] = useState(false);
+  const [editingDroneId, setEditingDroneId] = useState<string | null>(null);
 
    const [drones, setDrones] = useState([]);
 
@@ -162,15 +164,14 @@ const handleAddDrone = async () => {
       },
     };
 
-    console.log("🚀 SENDING:", droneData);
+    if (isEditing && editingDroneId) {
+      await API.put(`/drones/${editingDroneId}`, droneData);
+      alert("Drone updated ✅");
+    } else {
+      await API.post("/drones", droneData);
+      alert("Drone added ✅");
+    }
 
-    const res = await API.post("/drones", droneData);
-
-    alert("Drone added ✅");
-
-    setOpen(false);
-
-    // 🔥 refresh drones
     const list = await API.get("/drones");
 
     setDrones(
@@ -180,9 +181,28 @@ const handleAddDrone = async () => {
       []
     );
 
+    setOpen(false);
+    setIsEditing(false);
+    setEditingDroneId(null);
+
+    setForm({
+      name: "",
+      type: "SAR",
+      status: "idle",
+      speed: 0,
+      maxRange: 0,
+      payloadCapacity: 0,
+      battery: 100,
+      lat: 0,
+      lng: 0,
+      alt: 0,
+      baseLat: 0,
+      baseLng: 0,
+      baseAlt: 0,
+    });
   } catch (err: any) {
     console.log("❌ BACKEND:", err.response?.data);
-    alert(err.response?.data?.message || "Error adding drone");
+    alert(err.response?.data?.message || "Error saving drone");
   }
 };
 
@@ -199,26 +219,31 @@ const disableDrone = async (id: string) => {
   }
 };
 
-const handleEdit = (drone) => {
+const handleEdit = (drone: any) => {
+  setIsEditing(true);
+  setEditingDroneId(drone._id);
+
   setForm({
-  name: drone.name,
-  type: drone.type,
-  status: drone.status,
-  battery: drone.battery,
+    name: drone.name || "",
+    type: drone.type || "SAR",
+    status: drone.status || "idle",
 
-  speed: drone.speed || 0,
-  maxRange: drone.maxRange || 0,
-  payloadCapacity: drone.payloadCapacity || 0,
+    speed: drone.speed || 0,
+    maxRange: drone.maxRange || 0,
+    payloadCapacity: drone.payloadCapacity || 0,
+    battery: drone.battery || 100,
 
-  lat: drone.location?.lat || 0,
-  lng: drone.location?.lng || 0,
-  alt: drone.location?.alt || 0,
+    lat: drone.location?.lat || 0,
+    lng: drone.location?.lng || 0,
+    alt: drone.location?.alt || 0,
 
-  baseLat: drone.homeBase?.lat || 0,
-  baseLng: drone.homeBase?.lng || 0,
-  baseAlt: drone.homeBase?.alt || 0,
-});};
+    baseLat: drone.homeBase?.lat || 0,
+    baseLng: drone.homeBase?.lng || 0,
+    baseAlt: drone.homeBase?.alt || 0,
+  });
 
+  setOpen(true);
+};
   return (
     <div>
   {open && (
@@ -233,10 +258,12 @@ const handleEdit = (drone) => {
             {/* Header */}
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-green-400 flex items-center gap-2">
-                <DroneIcon className="w-10 h-10 shrink-0 mr-2"/>    Add New Drone
+                <DroneIcon className="w-10 h-10 shrink-0 mr-2"/>    {isEditing ? "Edit Drone" : "Add New Drone"}
               </h2>
               <p className="text-sm text-white/60">
-                Register a new drone to your fleet for mission deployment.
+                {isEditing
+                 ? "Update this drone information and save the changes."
+                : "Register a new drone to your fleet for mission deployment."}
               </p>
             </div>
 
@@ -399,7 +426,11 @@ const handleEdit = (drone) => {
             {/* Footer */}
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
               <button
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                setOpen(false);
+                setIsEditing(false);
+                 setEditingDroneId(null);
+}}
                 className="px-6 py-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 backdrop-blur-xl transition"
               >
                 ⊗ Cancel
@@ -407,7 +438,9 @@ const handleEdit = (drone) => {
               <button
                 onClick={handleAddDrone}
                className="px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold shadow-lg shadow-green-500/30 transition">
-                Add drone to your base
+               {isEditing
+                ? "Save Drone Changes"
+                : "Add drone to your base"}
               </button>
             </div>
           </div>
@@ -417,9 +450,65 @@ const handleEdit = (drone) => {
       <Glass className="overflow-hidden">
         <div className="flex items-center justify-between bg-black/40 px-6 py-4">
           <h2 className="text-2xl font-semibold text-white/80">All drones</h2>
-          <button onClick={() => setOpen(true)} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-            + Add drone
-          </button>
+          <button
+  onClick={() => {
+    setIsEditing(false);
+    setEditingDroneId(null);
+
+    setForm({
+      name: "",
+      type: "SAR",
+      status: "idle",
+
+      speed: 0,
+      maxRange: 0,
+      payloadCapacity: 0,
+      battery: 100,
+
+      lat: 0,
+      lng: 0,
+      alt: 0,
+
+      baseLat: 0,
+      baseLng: 0,
+      baseAlt: 0,
+    });
+
+    setOpen(true);
+  }}
+  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+>
+  + Add drone
+</button><button
+  onClick={() => {
+    setIsEditing(false);
+    setEditingDroneId(null);
+
+    setForm({
+      name: "",
+      type: "SAR",
+      status: "idle",
+
+      speed: 0,
+      maxRange: 0,
+      payloadCapacity: 0,
+      battery: 100,
+
+      lat: 0,
+      lng: 0,
+      alt: 0,
+
+      baseLat: 0,
+      baseLng: 0,
+      baseAlt: 0,
+    });
+
+    setOpen(true);
+  }}
+  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+>
+  + Add drone
+</button>
           
         </div>
         <div className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.4fr] items-center gap-6 border-b border-white/10 bg-black/30 px-8 py-5 text-sm font-bold uppercase tracking-[0.18em] text-white/80">
@@ -507,7 +596,7 @@ const handleEdit = (drone) => {
   Disable
 </button>
                 <button 
-                 onClick={() => navigate(`/drones/edit/${d._id}`)}
+                 onClick={() => handleEdit(d)}
                  className="
     rounded-xl
     bg-green-500/90
@@ -527,6 +616,27 @@ const handleEdit = (drone) => {
                   <Pencil className="h-4 hover:text-blue-400 w-4" />
                   Edit
                 </button>
+                <button
+  onClick={() => navigate(`/drones/${d._id}/history`)}
+  className="
+    rounded-xl
+    bg-blue-500/90
+    px-4
+    py-2
+    text-sm
+    font-semibold
+    text-white
+
+    transition-all
+    duration-300
+    hover:scale-105
+    hover:bg-blue-400
+
+    active:scale-95
+  "
+>
+  History
+</button>
               </div>
             </li>
           ))}

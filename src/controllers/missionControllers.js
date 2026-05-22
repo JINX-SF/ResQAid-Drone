@@ -1,7 +1,7 @@
 const Mission = require("../models/Mission");
 const Drone = require("../models/Drone");
 const Survivor = require("../models/Survivor");
-
+const MissionHistory = require("../models/MissionHistory");
 
 const allowedNext = {
   pending: ["active"],
@@ -185,24 +185,75 @@ exports.assignDrone = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-exports.updateMission = async (req, res) => {
-  const { lat, lng, ...rest } = req.body;
+exports.updateMission = async (req, res, next) => {
+  try {
+    req.body.lastEditedBy = req.user?._id;
+    req.body.lastEditedAt = new Date();
 
-  const mission = await Mission.findByIdAndUpdate(
-    req.params.id,
-    {
-      ...rest,
-      departureLocation: {
-        lat,
-        lng,
-      },
-    },
-    { new: true }
-  );
+    const oldMission = await Mission.findById(req.params.id);
 
-  res.json({ success: true, data: mission });
+    if (!oldMission) {
+      return res.status(404).json({
+        success: false,
+        message: "Mission not found",
+      });
+    }
+
+    const oldData = oldMission.toObject();
+
+    const updatedMission =
+      await Mission.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+
+    const changes = [];
+
+    Object.keys(req.body).forEach((key) => {
+      const oldValue = oldData[key];
+      const newValue = req.body[key];
+
+      if (
+        JSON.stringify(oldValue) !==
+        JSON.stringify(newValue)
+      ) {
+        changes.push({
+          field: key,
+          oldValue,
+          newValue,
+        });
+      }
+    });
+
+    await MissionHistory.create({
+      missionId: updatedMission._id,
+
+      editedBy: req.user?._id,
+
+      editorName:
+        req.user?.name || "Unknown User",
+
+      action: "updated",
+
+      changes,
+
+      previousData: oldData,
+
+      updatedData: updatedMission,
+    });
+
+    res.json({
+      success: true,
+      data: updatedMission,
+    });
+  } catch (err) {
+    next(err);
+  }
 };
-
 exports.assignSurvivor = async (req, res, next) => {
   try {
     const { survivorId } = req.body;
@@ -265,4 +316,24 @@ exports.deleteMission = async (req, res, next) => {
       return res.status(404).json({ success: false, message: "Mission not found" });
     res.json({ success: true, message: "Mission deleted" });
   } catch (err) { next(err); }
+};
+exports.getMissionHistory = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const history = await MissionHistory.find({
+      missionId: req.params.id,
+    })
+      .sort({ createdAt: -1 })
+      .populate("editedBy", "name email");
+
+    res.json({
+      success: true,
+      data: history,
+    });
+  } catch (err) {
+    next(err);
+  }
 };

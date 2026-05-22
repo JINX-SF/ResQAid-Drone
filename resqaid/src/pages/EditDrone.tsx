@@ -20,7 +20,7 @@ export default function EditDrone() {
     const fetchDrone = async () => {
       try {
         const res = await API.get(`/drones/${id}`);
-        const d = res.data;
+        const d = res.data.data;
 
         setForm({
           name: d.name,

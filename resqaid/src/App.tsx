@@ -28,6 +28,8 @@ import EditMission from "./pages/EditMission";
 import RequestDetails from "./pages/RequestDetails";
 import MyRequestsPage from "./pages/MyRequestsPage";
 import DisabledItemsPage from "./pages/DisabledItemsPage";
+import DroneHistory from "./pages/DroneHistory";
+import MissionHistory from "./pages/MissionHistory";
 
 import Reset from "./pages/Reset";
 
@@ -58,7 +60,10 @@ const App = () => (
           <Route path="/infos" element={<Infos />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/missionsPage" element={<MissionsPage />} />
-
+<Route
+  path="/missions/:id/history"
+  element={<MissionHistory />}
+/>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
           <Route path="/oauth-success" element={<OAuthSuccess />} />
@@ -78,6 +83,9 @@ const App = () => (
            <Route path="/requests/:id" element={<RequestDetails />} />
            <Route path="/my-requests" element={<MyRequestsPage />} />
            <Route path="/disabled" element={<DisabledItemsPage />} />
+
+           <Route path="/drones/:id/history" element={<DroneHistory />}
+/>
 
 
         </Routes>

@@ -10,7 +10,7 @@ const {
   getDrone,
   createDrone,
   updateDrone,
-
+  getDroneHistory,
   disableDrone,
   reactivateDrone,
   getDisabledDrones,
@@ -31,6 +31,8 @@ router.delete("/:id", protect,adminOnly, restrictTo("admin"), ctrl.deleteDrone);
 router.post("/:id/goto",           protect,adminOnly, ctrl.gotoLocation);
 router.post("/:id/return-home",    protect,adminOnly, ctrl.returnHome);
 router.post("/:id/emergency-stop", protect,adminOnly, ctrl.emergencyStop);
+
+router.get("/:id/history", protect, getDroneHistory);
 
 
 module.exports = router;

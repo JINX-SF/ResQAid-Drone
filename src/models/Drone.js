@@ -30,6 +30,14 @@ const DroneSchema = new mongoose.Schema(
       enum: ["SAR", "delivery", "hybrid"],
       default: "SAR",
     },
+    lastEditedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+     ref: "User",
+  },
+
+lastEditedAt: {
+  type: Date,
+},
   },
   { timestamps: true }
 );
