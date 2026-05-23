@@ -4,7 +4,7 @@ import DroneIcon from "@/components/DroneIcon";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "@/api";
-
+import { saveCache, loadCache } from "@/utils/offlineCache";
 type Status = "in mission" | "active" | "offline";
 type DType = "Search & rescue" | "Delivery";
 
@@ -93,19 +93,23 @@ const [otherReason, setOtherReason] = useState("");
  useEffect(() => {
   const fetchDrones = async () => {
     try {
-      const res = await API.get("/drones");
+  const res = await API.get("/drones");
 
-      console.log("INITIAL DRONES:", res.data);
+  const dronesData = res.data?.data || [];
 
-      setDrones(
-        res.data?.drones ||
-        res.data?.data ||
-        res.data ||
-        []
-      );
-    } catch (err) {
-      console.error(err);
-    }
+  setDrones(dronesData);
+
+  saveCache("drones_cache", dronesData);
+} catch (err) {
+  console.error("Online drones fetch failed:", err);
+
+  const cached = loadCache("drones_cache");
+
+  if (cached?.data) {
+    setDrones(cached.data);
+    alert("Offline mode: showing cached drones");
+  }
+}
   };
   Trash2
 

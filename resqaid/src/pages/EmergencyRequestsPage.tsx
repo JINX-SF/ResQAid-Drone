@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 
 import AppShell from "@/components/AppShell";
+import { saveCache, loadCache } from "@/utils/offlineCache";
+
+
 
 type RequestItem = {
   _id: string;
@@ -123,32 +126,64 @@ export default function EmergencyRequestsPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchRequests = async () => {
-    try {
-      setLoading(true);
+   try {
+  setLoading(true);
 
-      const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
 
-      const res = await fetch("http://localhost:5000/api/emergency-requests", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await res.json();
-
-      if (Array.isArray(data)) {
-        setRequests(data);
-      } else if (Array.isArray(data.requests)) {
-        setRequests(data.requests);
-      } else {
-        setRequests([]);
-      }
-    } catch (error) {
-      console.error("Failed to fetch emergency requests:", error);
-      setRequests([]);
-    } finally {
-      setLoading(false);
+  const res = await fetch(
+    "http://localhost:5000/api/emergency-requests",
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     }
+  );
+
+  const data = await res.json();
+
+  // save data locally for offline mode
+  saveCache("emergencyRequests", data);
+
+  if (Array.isArray(data)) {
+    setRequests(data);
+
+  } else if (Array.isArray(data.requests)) {
+    setRequests(data.requests);
+
+  } else {
+    setRequests([]);
+  }
+
+} catch (error) {
+
+  console.error(
+    "Failed to fetch emergency requests:",
+    error
+  );
+
+  // load cached data if internet/backend fails
+  const cached = loadCache("emergencyRequests");
+
+  if (cached) {
+
+    if (Array.isArray(cached)) {
+      setRequests(cached);
+
+    } else if (Array.isArray(cached.requests)) {
+      setRequests(cached.requests);
+
+    } else {
+      setRequests([]);
+    }
+
+  } else {
+    setRequests([]);
+  }
+
+} finally {
+  setLoading(false);
+}
   };
 
   useEffect(() => {

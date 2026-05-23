@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import API from "@/api";
 import { useNavigate } from "react-router-dom";
 
+import { saveCache, loadCache } from "@/utils/offlineCache";
+
 type Status = "completed" | "assigned" | "pending" | "active";
 type Urgency = "critical" | "minor" | "low";
 type MType = "Search & rescue" | "Delivery";
@@ -142,12 +144,23 @@ export default function MissionsPage() {
   useEffect(() => {
     const fetchMissions = async () => {
       try {
-        const res = await API.get("/missions");
-        console.log("MISSIONS RESPONSE:", res.data);
-        setMissions(res.data?.data || []);
-      } catch (err) {
-        console.error(err);
-      }
+  const res = await API.get("/missions");
+
+  const missionsData = res.data?.data || [];
+
+  setMissions(missionsData);
+
+  saveCache("missions_cache", missionsData);
+} catch (err) {
+  console.error("Online missions fetch failed:", err);
+
+  const cached = loadCache("missions_cache");
+
+  if (cached?.data) {
+    setMissions(cached.data);
+    alert("Offline mode: showing cached missions");
+  }
+}
     };
 
     fetchMissions();
