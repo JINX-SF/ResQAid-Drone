@@ -13,6 +13,7 @@ import rescueBg from "@/assets/rescue-bg.jpg";
 import { useState, useEffect } from "react";
 import socket from "@/socket";
 import { Map, Camera } from "lucide-react";
+import API from "@/api";
 
 const Controle = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -22,6 +23,9 @@ const Controle = () => {
   // live drone/target positions for the full-screen map view
   const [dronePin, setDronePin] = useState<LatLng | null>(null);
   const [targetPin, setTargetPin] = useState<LatLng | null>(null);
+
+  const [missions, setMissions] = useState<any[]>([]);
+const [selectedMission, setSelectedMission] = useState<any>(null);
 
   useEffect(() => {
     socket.on("dronePosition", (data) => {
@@ -35,6 +39,39 @@ const Controle = () => {
       socket.off("missionUpdated");
     };
   }, []);
+
+  useEffect(() => {
+  const fetchAssignedMissions = async () => {
+    try {
+
+   const res = await API.get("/missions");
+
+const assigned = res.data.data.filter(
+  (m: any) =>
+    m.drone &&
+    m.status?.toLowerCase() === "assigned"
+);
+
+setMissions(assigned);
+
+if (assigned.length > 0) {
+  setSelectedMission(assigned[0]);
+}
+
+      setMissions(assigned);
+
+      // auto select first mission
+      if (assigned.length > 0) {
+        setSelectedMission(assigned[0]);
+      }
+
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  fetchAssignedMissions();
+}, []);
 
   return (
     <div className="min-h-screen flex relative">
@@ -53,6 +90,43 @@ const Controle = () => {
         />
         <main className="flex-1 p-4 flex flex-col gap-4 overflow-auto">
           <TopBar />
+
+          <div className="flex gap-3 overflow-x-auto pb-2">
+
+  {missions.map((mission) => (
+
+    <button
+      key={mission._id}
+      onClick={() =>
+        setSelectedMission(mission)
+      }
+      className={`min-w-[220px] rounded-2xl px-5 py-4 text-left transition-all border backdrop-blur-xl
+      ${
+        selectedMission?._id === mission._id
+          ? "bg-emerald-500/30 border-emerald-400"
+          : "bg-black/30 border-white/10 hover:border-emerald-300/30"
+      }`}
+    >
+
+      <div className="text-lg font-bold text-white">
+        {mission.title}
+      </div>
+
+      <div className="text-sm text-white/60">
+        {mission.type}
+      </div>
+
+      <div className="mt-2 text-xs text-emerald-300">
+        Drone: {mission.drone?.name || "None"}
+      </div>
+
+    </button>
+
+  ))}
+
+</div>
+
+
           <div className="flex gap-4 flex-1 min-h-0">
 
             {/* Center: main view + bottom panels */}
