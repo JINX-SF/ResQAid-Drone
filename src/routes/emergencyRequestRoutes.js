@@ -8,7 +8,6 @@ const {
   acceptRequest,
   rejectRequest,
   deleteRequest,
-   getEmergencyRequestById,
    getMyRequests,
 } = require("../controllers/emergencyRequestControllers");
 
@@ -16,7 +15,7 @@ const { protect } = require("../middleware/authMiddleware");
 
 router.post("/", protect, createRequest);
 router.get("/my-requests", protect, getMyRequests);
-router.get("/:id", protect, getEmergencyRequestById);
+router.get("/:id", protect,getRequestById);
 
 router.get("/", protect, getEmergencyRequests);
 

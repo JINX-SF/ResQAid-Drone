@@ -5,16 +5,44 @@ const Drone = require("../models/Drone");
 exports.createRequest = async (req, res, next) => {
   try {
     const request = await EmergencyRequest.create({
+      // USER
       user: req.user?._id || null,
+
+      // SERVICE TYPE
       type: req.body.type,
-      description: req.body.description,
-      urgency: req.body.urgency,
-      phone: req.body.phone,
+
+      // DESCRIPTION
+      description: req.body.description || "",
+
+      // URGENCY
+      urgency: req.body.urgency || "Medium",
+
+      // DYNAMIC DETAILS
+      details: req.body.details || {},
+
+      // PHONE
+      phone: req.body.phone || "",
+
+      // MAIN LOCATION
       location: {
-        name: req.body.locationName,
-        lat: Number(req.body.lat),
-        lng: Number(req.body.lng),
+        name: req.body.locationName || "",
+
+        lat: Number(req.body.lat) || 0,
+
+        lng: Number(req.body.lng) || 0,
       },
+
+      // LOGISTICS PICKUP LOCATION
+      fromLocation: {
+        name: req.body.fromLocationName || "",
+
+        lat: Number(req.body.fromLat) || 0,
+
+        lng: Number(req.body.fromLng) || 0,
+      },
+
+      // STATUS
+      status: "pending",
     });
 
     res.status(201).json({
@@ -77,19 +105,17 @@ exports.getMyRequests = async (req, res, next) => {
 
 exports.getEmergencyRequests = async (req, res, next) => {
   try {
-    const requests = await EmergencyRequest.find().sort({
-      createdAt: -1,
-    });
+    const requests = await EmergencyRequest.find()
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
 
-    res.json({
-      success: true,
-      data: requests,
-    });
-  } catch (err) {
-    next(err);
+    console.log("REQUESTS FOUND:", requests.length);
+
+    res.status(200).json(requests);
+  } catch (error) {
+    next(error);
   }
 };
-
 exports.getRequestById = async (req, res, next) => {
   try {
     const request = await EmergencyRequest.findById(req.params.id)
