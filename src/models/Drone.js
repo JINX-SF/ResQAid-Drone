@@ -8,6 +8,17 @@ const DroneSchema = new mongoose.Schema(
       enum: ["idle", "in_mission", "maintenance", "disabled"],
       default: "idle",
     },
+
+isDisabled: {
+  type: Boolean,
+  default: false,
+},
+
+disableReason: {
+  type: String,
+  default: "",
+},
+
     speed:           { type: Number, default: 0 },
     maxRange:        { type: Number, default: 0 },
     payloadCapacity: { type: Number, default: 0 },

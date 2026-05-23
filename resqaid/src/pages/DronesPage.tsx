@@ -56,6 +56,14 @@ function TypeCell({ type }: { type: DType }) {
 }
 export default function DronesPage() {
   const navigate = useNavigate();
+const [selectedDrone, setSelectedDrone] = useState<any>(null);
+
+const [showDisableModal, setShowDisableModal] = useState(false);
+
+const [disableReason, setDisableReason] = useState("");
+
+const [otherReason, setOtherReason] = useState("");
+
   const [form, setForm] = useState({
   name: "",
   type: "SAR",
@@ -216,6 +224,39 @@ const disableDrone = async (id: string) => {
     );
   } catch (err) {
     console.error(err);
+  }
+};
+
+const handleDisableDrone = async () => {
+  try {
+
+    const finalReason =
+      disableReason === "Other"
+        ? otherReason
+        : disableReason;
+
+    await API.patch(
+      `/drones/${selectedDrone._id}/disable`,
+      {
+        reason: finalReason,
+      }
+    );
+
+    // remove instantly from drones page
+    setDrones((prev) =>
+      prev.filter(
+        (d) => d._id !== selectedDrone._id
+      )
+    );
+
+    setShowDisableModal(false);
+
+    setDisableReason("");
+    setOtherReason("");
+    setSelectedDrone(null);
+
+  } catch (error) {
+    console.error(error);
   }
 };
 
@@ -575,7 +616,10 @@ const handleEdit = (drone: any) => {
   {/* ACTIONS */}
               <div className="flex justify-end gap-2">
                 <button
-  onClick={() => disableDrone(d._id)}
+   onClick={() => {
+    setSelectedDrone(d);
+    setShowDisableModal(true);
+  }}
   className="
     rounded-xl
     bg-red-500/90
@@ -642,6 +686,102 @@ const handleEdit = (drone: any) => {
           ))}
         </ul>
       </Glass>
+
+      {showDisableModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-[440px] rounded-2xl border border-white/5 bg-[#0f141c]/90 p-7 backdrop-blur-xl shadow-2xl text-white">
+            
+            {/* Header section with orange/red alert bullet */}
+            <div className="mb-5">
+              <h2 className="text-xl font-semibold text-white flex items-center gap-2.5">
+                <span className="w-3.5 h-3.5 rounded-full bg-[#f44336] shadow-[0_0_12px_#f44336] shrink-0" />
+                Disable Drone
+              </h2>
+              <p className="text-[12px] text-white/40 mt-1 leading-normal">
+                Please select a dynamic reason below to halt this automated deployment status safely.
+              </p>
+            </div>
+
+            {/* Selection Options Grid */}
+            <div className="space-y-2">
+              <button
+                onClick={() => setDisableReason("crashed")}
+                className={`w-full rounded-xl p-3 text-left text-[13px] font-medium transition-all duration-200 flex items-center gap-2.5 ${
+                  disableReason === "crashed"
+                    ? "bg-[#1d4ed8] text-white shadow-lg shadow-blue-500/10"
+                    : "bg-[#161b26] text-white/70 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <span>⛅</span> Weather conditions
+              </button>
+
+              <button
+                onClick={() => setDisableReason("destroyed")}
+                className={`w-full rounded-xl p-3 text-left text-[13px] font-medium transition-all duration-200 flex items-center gap-2.5 ${
+                  disableReason === "destroyed"
+                    ? "bg-[#1d4ed8] text-white shadow-lg shadow-blue-500/10"
+                    : "bg-[#161b26] text-white/70 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <span>🛡️</span> Drone malfunction
+              </button>
+
+              <button
+                onClick={() => setDisableReason("out_of_service")}
+                className={`w-full rounded-xl p-3 text-left text-[13px] font-medium transition-all duration-200 flex items-center gap-2.5 ${
+                  disableReason === "out_of_service"
+                    ? "bg-[#1d4ed8] text-white shadow-lg shadow-blue-500/10"
+                    : "bg-[#161b26] text-white/70 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <span>🔋</span> Low battery
+              </button>
+
+              <button
+                onClick={() => setDisableReason("other")}
+                className={`w-full rounded-xl p-3 text-left text-[13px] font-medium transition-all duration-200 flex items-center gap-2.5 ${
+                  disableReason === "other"
+                    ? "bg-[#1d4ed8] text-white shadow-lg shadow-blue-500/10"
+                    : "bg-[#161b26] text-white/70 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <span>⚡</span> Other reason
+              </button>
+
+              {disableReason === "other" && (
+                <textarea
+                  value={otherReason}
+                  onChange={(e) => setOtherReason(e.target.value)}
+                  placeholder="Write reason..."
+                  className="w-full rounded-xl bg-black/40 border border-white/5 p-3 text-xs text-white placeholder-white/20 outline-none focus:border-blue-500/50 mt-1 h-16 resize-none transition"
+                />
+              )}
+            </div>
+
+            {/* Action Buttons layout */}
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDisableModal(false);
+                  setDisableReason("");
+                  setOtherReason("");
+                }}
+                className="flex-1 rounded-xl bg-[#1e2533] hover:bg-[#252e3f] py-3 text-xs font-semibold text-white/80 transition"
+              >
+                Cancel
+              </button>
+
+              <button
+                disabled={!disableReason || (disableReason === "other" && !otherReason)}
+                onClick={handleDisableDrone}
+                className="flex-1 rounded-xl bg-[#e11d48] hover:bg-[#f43f5e] py-3 text-xs font-semibold text-white shadow-lg shadow-rose-600/20 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Confirm Disable
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
     </div>
   
@@ -658,6 +798,8 @@ function Field({ label, children, full }: { label: string; children: React.React
     <div className={full ? "col-span-2" : ""}>
       <label className="block text-xs uppercase tracking-wide text-white/60 mb-1">{label}</label>
       {children}
+
+
     </div>
   );
 }

@@ -23,6 +23,16 @@ const MissionSchema = new mongoose.Schema(
   default: "pending",
 },
 
+isDisabled: {
+  type: Boolean,
+  default: false,
+},
+
+disableReason: {
+  type: String,
+  default: "",
+},
+
     urgency: {
       type: String,
       enum: ["Low", "Medium", "High", "Critical"],

@@ -282,42 +282,71 @@ exports.gotoLocation = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-exports.disableDrone = async (req, res, next) => {
+exports.disableDrone = async (req, res) => {
   try {
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        message: "Disable reason is required",
+      });
+    }
+
     const drone = await Drone.findById(req.params.id);
 
     if (!drone) {
       return res.status(404).json({
-        success: false,
         message: "Drone not found",
       });
     }
 
+    drone.isDisabled = true;
+    drone.disableReason = reason;
     drone.status = "disabled";
 
     await drone.save();
 
     res.json({
       success: true,
-      message: "Drone disabled",
-      data: drone,
+      drone,
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
 
-exports.reactivateDrone = async (req, res, next) => {
+
+
+exports.reactivateDrone = async (req, res) => {
   try {
-    const drone = await Drone.findByIdAndUpdate(
-      req.params.id,
-      { status: "idle" },
-      { new: true }
+
+    const drone = await Drone.findById(
+      req.params.id
     );
 
-    res.json({ success: true, data: drone });
-  } catch (err) {
-    next(err);
+    if (!drone) {
+      return res.status(404).json({
+        message: "Drone not found",
+      });
+    }
+
+    drone.isDisabled = false;
+    drone.disableReason = "";
+    drone.status = "idle";
+
+    await drone.save();
+
+    res.json({
+      success: true,
+      drone,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
 

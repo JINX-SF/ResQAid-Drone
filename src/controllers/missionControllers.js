@@ -87,27 +87,38 @@ exports.getMissions = async (req, res, next) => {
     next(err);
   }
 };
-exports.disableMission = async (req, res, next) => {
+exports.disableMission = async (req, res) => {
   try {
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        message: "Reason is required",
+      });
+    }
+
     const mission = await Mission.findById(req.params.id);
 
     if (!mission) {
       return res.status(404).json({
-        success: false,
         message: "Mission not found",
       });
     }
 
     mission.status = "disabled";
+    mission.isDisabled = true;
+    mission.disableReason = reason;
 
     await mission.save();
 
     res.json({
       success: true,
-      data: mission,
+      mission,
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
 

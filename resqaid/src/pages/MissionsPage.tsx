@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import API from "@/api";
 import { useNavigate } from "react-router-dom";
 
-
 type Status = "completed" | "assigned" | "pending" | "active";
 type Urgency = "critical" | "minor" | "low";
 type MType = "Search & rescue" | "Delivery";
@@ -34,17 +33,10 @@ type Mission = {
 
 function StatusPill({ status }: { status: Status }) {
   const styles: Record<Status, string> = {
-    completed:
-      "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40",
-
-    pending:
-      "bg-yellow-500/20 text-yellow-100 border border-yellow-400/40",
-
-    active:
-      "bg-blue-500/20 text-blue-100 border border-blue-400/40",
-
-    assigned:
-      "bg-cyan-500/20 text-cyan-100 border border-cyan-400/40",
+    completed: "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40",
+    pending: "bg-yellow-500/20 text-yellow-100 border border-yellow-400/40",
+    active: "bg-blue-500/20 text-blue-100 border border-blue-400/40",
+    assigned: "bg-cyan-500/20 text-cyan-100 border border-cyan-400/40",
   };
 
   return (
@@ -63,15 +55,12 @@ function UrgencyPill({ urgency }: { urgency: string }) {
     low: {
       cls: "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30",
     },
-
     medium: {
       cls: "bg-yellow-500/15 text-yellow-100 border border-yellow-400/30",
     },
-
     high: {
       cls: "bg-orange-500/15 text-orange-100 border border-orange-400/30",
     },
-
     critical: {
       cls: "bg-red-500/15 text-red-100 border border-red-400/30",
     },
@@ -123,11 +112,15 @@ function Field({
 }
 
 export default function MissionsPage() {
+  const [showDisableModal, setShowDisableModal] = useState(false);
+  const [selectedMission, setSelectedMission] = useState<any>(null);
+  const [disableReason, setDisableReason] = useState("");
+  const [otherReason, setOtherReason] = useState("");
+
   const navigate = useNavigate();
-  const [missions, setMissions] = useState<Mission[]>([]);
+  const [missions, setMissions] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
 
-  // STEP 3 FIX — state declarations must be right here, together
   const [isEditing, setIsEditing] = useState(false);
   const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
 
@@ -160,130 +153,99 @@ export default function MissionsPage() {
     fetchMissions();
   }, []);
 
-  // STEP 2 FIX — full corrected handleAddMission (nothing escapes outside)
   const handleAddMission = async () => {
     try {
       const missionData = {
         title: form.title || form.type,
-
         type: form.type,
-
         status: form.status,
-
         payloadWeight: Number(form.payloadWeight),
-
         urgency: form.urgency,
-
         startTime: form.startTime,
-
         departureLocation: {
           name: form.locationName,
-
           lat: Number(form.lat),
-
           lng: Number(form.lng),
         },
-
         targetArea: {
           name: form.targetArea,
-
           lat: Number(form.targetLat),
-
           lng: Number(form.targetLng),
         },
       };
 
       console.log("SENDING MISSION:", missionData);
 
-      // EDIT MODE
       if (isEditing && editingMissionId) {
         await API.put(`/missions/${editingMissionId}`, missionData);
-
         alert("Mission updated ✅");
-      }
-
-      // CREATE MODE
-      else {
+      } else {
         await API.post("/missions", missionData);
-
         alert("Mission added ✅");
       }
 
-      // REFRESH MISSIONS
       const res = await API.get("/missions");
-
-      setMissions(
-        res.data?.missions ||
-        res.data?.data ||
-        res.data ||
-        []
-      );
-
-      // RESET MODAL
+      setMissions(res.data?.missions || res.data?.data || res.data || []);
       setOpen(false);
-
       setIsEditing(false);
-
       setEditingMissionId(null);
-
     } catch (err: any) {
       console.log("BACKEND ERROR:", err.response?.data);
-
       alert(err.response?.data?.message || "Error adding mission");
+    }
+  };
+
+  const handleDisableMission = async () => {
+    try {
+      const finalReason =
+        disableReason === "other" ? otherReason : disableReason;
+
+      await API.patch(`/missions/${selectedMission._id}/disable`, {
+        reason: finalReason,
+      });
+
+      setMissions((prev) => prev.filter((m) => m._id !== selectedMission._id));
+
+      setShowDisableModal(false);
+      setDisableReason("");
+      setOtherReason("");
+    } catch (error) {
+      console.error(error);
     }
   };
 
   const disableMission = async (id: string) => {
     try {
       await API.patch(`/missions/${id}/disable`);
-
-      setMissions((prev: any) =>
-        prev.filter((m: any) => m._id !== id)
-      );
+      setMissions((prev: any) => prev.filter((m: any) => m._id !== id));
     } catch (err) {
       console.error(err);
     }
   };
 
-  // STEP 4 FIX — corrected handleEditMission with proper nested field mapping
   const handleEditMission = (mission: any) => {
     setIsEditing(true);
-
     setEditingMissionId(mission._id);
-
     setForm({
       title: mission.title || "",
-
       type: mission.type || "SAR",
-
       status: mission.status || "pending",
-
       payloadWeight: mission.payloadWeight || 0,
-
       urgency: mission.urgency || "Low",
-
-      startTime: mission.startTime
-        ? mission.startTime.slice(0, 16)
-        : "",
-
+      startTime: mission.startTime ? mission.startTime.slice(0, 16) : "",
       locationName: mission.departureLocation?.name || "",
-
       lat: mission.departureLocation?.lat || 0,
-
       lng: mission.departureLocation?.lng || 0,
-
       targetArea: mission.targetArea?.name || "",
-
       targetLat: mission.targetArea?.lat || 0,
-
       targetLng: mission.targetArea?.lng || 0,
     });
-
     setOpen(true);
   };
 
   return (
     <div>
+      {/* New / Edit Mission Modal */}
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md"
@@ -306,7 +268,6 @@ export default function MissionsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
               {/* 1. Mission Info */}
               <section className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 md:col-span-2">
                 <h3 className="flex items-center gap-2 mb-4 font-semibold">
@@ -314,15 +275,12 @@ export default function MissionsPage() {
                   Mission Information
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
-
                   <Field label="Mission Title" full>
                     <input
                       className={inputCls}
                       placeholder="Rescue operation #1"
                       value={form.title}
-                      onChange={(e) =>
-                        setForm({ ...form, title: e.target.value })
-                      }
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
                     />
                   </Field>
 
@@ -339,9 +297,7 @@ export default function MissionsPage() {
                     <select
                       className={inputCls}
                       value={form.status}
-                      onChange={(e) =>
-                        setForm({ ...form, status: e.target.value.toLowerCase() })
-                      }
+                      onChange={(e) => setForm({ ...form, status: e.target.value.toLowerCase() })}
                     >
                       <option value="pending">Pending</option>
                       <option value="assigned">Assigned</option>
@@ -354,18 +310,14 @@ export default function MissionsPage() {
                     className={inputCls}
                     type="number"
                     value={form.payloadWeight}
-                    onChange={(e) =>
-                      setForm({ ...form, payloadWeight: Number(e.target.value) })
-                    }
+                    onChange={(e) => setForm({ ...form, payloadWeight: Number(e.target.value) })}
                   />
 
                   <Field label="Urgency">
                     <select
                       className={inputCls}
                       value={form.urgency}
-                      onChange={(e) =>
-                        setForm({ ...form, urgency: e.target.value })
-                      }
+                      onChange={(e) => setForm({ ...form, urgency: e.target.value })}
                     >
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
@@ -379,9 +331,7 @@ export default function MissionsPage() {
                       type="datetime-local"
                       className={inputCls}
                       value={form.startTime}
-                      onChange={(e) =>
-                        setForm({ ...form, startTime: e.target.value })
-                      }
+                      onChange={(e) => setForm({ ...form, startTime: e.target.value })}
                     />
                   </Field>
                 </div>
@@ -407,9 +357,7 @@ export default function MissionsPage() {
                       className={inputCls}
                       placeholder="35.6971"
                       value={form.lat}
-                      onChange={(e) =>
-                        setForm({ ...form, lat: Number(e.target.value) })
-                      }
+                      onChange={(e) => setForm({ ...form, lat: Number(e.target.value) })}
                     />
                   </Field>
                   <Field label="Longitude">
@@ -418,9 +366,7 @@ export default function MissionsPage() {
                       className={inputCls}
                       placeholder="-0.6308"
                       value={form.lng}
-                      onChange={(e) =>
-                        setForm({ ...form, lng: Number(e.target.value) })
-                      }
+                      onChange={(e) => setForm({ ...form, lng: Number(e.target.value) })}
                     />
                   </Field>
                 </div>
@@ -437,31 +383,23 @@ export default function MissionsPage() {
                     <input
                       className={inputCls}
                       value={form.targetArea}
-                      onChange={(e) =>
-                        setForm({ ...form, targetArea: e.target.value })
-                      }
+                      onChange={(e) => setForm({ ...form, targetArea: e.target.value })}
                     />
                   </Field>
-
                   <Field label="Target latitude">
                     <input
                       type="number"
                       className={inputCls}
                       value={form.targetLat}
-                      onChange={(e) =>
-                        setForm({ ...form, targetLat: Number(e.target.value) })
-                      }
+                      onChange={(e) => setForm({ ...form, targetLat: Number(e.target.value) })}
                     />
                   </Field>
-
                   <Field label="Target longitude">
                     <input
                       type="number"
                       className={inputCls}
                       value={form.targetLng}
-                      onChange={(e) =>
-                        setForm({ ...form, targetLng: Number(e.target.value) })
-                      }
+                      onChange={(e) => setForm({ ...form, targetLng: Number(e.target.value) })}
                     />
                   </Field>
                   <p className="text-xs text-green-400/80">Mission destination coordinates.</p>
@@ -495,9 +433,7 @@ export default function MissionsPage() {
             <button
               onClick={() => {
                 setIsEditing(false);
-
                 setEditingMissionId(null);
-
                 setForm({
                   title: "",
                   type: "SAR",
@@ -512,7 +448,6 @@ export default function MissionsPage() {
                   targetLat: 0,
                   targetLng: 0,
                 });
-
                 setOpen(true);
               }}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
@@ -539,23 +474,10 @@ export default function MissionsPage() {
                 className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 px-8 py-5 border-b border-white/5 hover:bg-white/[0.03] transition-all"
               >
                 <div className="font-medium text-white/80">{m._id.slice(-5)}</div>
-
-                <div className="font-medium text-white/90">
-                  {m.type}
-                </div>
-
-                <div className="font-medium text-white/90">
-                  <StatusPill status={m.status} />
-                </div>
-
-                <div className="font-medium text-white/85">
-                  {m.payloadWeight} kg
-                </div>
-
-                <div className="font-medium text-white/80">
-                  <UrgencyPill urgency={m.urgency} />
-                </div>
-
+                <div className="font-medium text-white/90">{m.type}</div>
+                <div className="font-medium text-white/90"><StatusPill status={m.status} /></div>
+                <div className="font-medium text-white/85">{m.payloadWeight} kg</div>
+                <div className="font-medium text-white/80"><UrgencyPill urgency={m.urgency} /></div>
                 <div className="font-medium text-white/80">
                   {m.startedAt
                     ? new Date(m.startedAt).toLocaleString()
@@ -563,49 +485,28 @@ export default function MissionsPage() {
                       ? new Date(m.createdAt).toLocaleString()
                       : "—"}
                 </div>
-
-                <div className="font-medium text-white/80">
-                  📍 {m.departureLocation?.lat}, {m.departureLocation?.lng}
-                </div>
-
-                <div className="font-medium text-white/80">
-                  🎯 {m.targetArea?.lat}, {m.targetArea?.lng}
-                </div>
+                <div className="font-medium text-white/80">📍 {m.departureLocation?.lat}, {m.departureLocation?.lng}</div>
+                <div className="font-medium text-white/80">🎯 {m.targetArea?.lat}, {m.targetArea?.lng}</div>
 
                 <div className="flex items-center justify-end gap-2">
-                  
                   <button
                     onClick={() => handleEditMission(m)}
                     className="rounded-xl bg-green-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-green-400 active:scale-95"
                   >
                     Edit
                   </button>
-<button
-  onClick={() =>
-    navigate(`/missions/${m._id}/history`)
-  }
-
-  className="
-    rounded-xl
-    bg-blue-500/90
-    px-4
-    py-2
-    text-sm
-    font-semibold
-    text-white
-
-    transition-all
-    duration-300
-    hover:scale-105
-    hover:bg-blue-400
-
-    active:scale-95
-  "
->
-  History
-</button>
                   <button
-                    onClick={() => disableMission(m._id)}
+                    onClick={() => navigate(`/missions/${m._id}/history`)}
+                    className="rounded-xl bg-blue-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-blue-400 active:scale-95"
+                  >
+                    History
+                  </button>
+                  <button
+                    onClick={() => {
+                      disableMission(m._id);
+                      setSelectedMission(m);
+                      setShowDisableModal(true);
+                    }}
                     className="rounded-xl bg-red-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-red-400 active:scale-95"
                   >
                     Disable
@@ -615,6 +516,96 @@ export default function MissionsPage() {
             ))}
           </ul>
         </Glass>
+
+        {/* REDESIGNED PROFESSIONAL BLUE/GREY DISABLE MODAL */}
+        {showDisableModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md">
+            <div className="w-full max-w-md rounded-2xl border border-slate-700/50 bg-slate-900/95 p-6 shadow-2xl shadow-black/50 transition-all duration-200 text-white">
+              
+              <div className="mb-5">
+                <h2 className="text-xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
+                  <span className="text-rose-500">🛑</span> Disable Mission
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Please select a dynamic reason below to halt this automated deployment status safely.
+                </p>
+              </div>
+
+              <div className="space-y-2.5">
+                <button
+                  onClick={() => setDisableReason("weather_conditions")}
+                  className={`w-full rounded-xl p-3.5 text-sm font-medium text-left border transition-all duration-200 ${
+                    disableReason === "weather_conditions"
+                      ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20"
+                      : "bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+                  }`}
+                >
+                  ⛅ Weather conditions
+                </button>
+
+                <button
+                  onClick={() => setDisableReason("drone_malfunction")}
+                  className={`w-full rounded-xl p-3.5 text-sm font-medium text-left border transition-all duration-200 ${
+                    disableReason === "drone_malfunction"
+                      ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20"
+                      : "bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+                  }`}
+                >
+                  🤖 Drone malfunction
+                </button>
+
+                <button
+                  onClick={() => setDisableReason("low_battery")}
+                  className={`w-full rounded-xl p-3.5 text-sm font-medium text-left border transition-all duration-200 ${
+                    disableReason === "low_battery"
+                      ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20"
+                      : "bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+                  }`}
+                >
+                  🔋 Low battery
+                </button>
+
+                <button
+                  onClick={() => setDisableReason("other")}
+                  className={`w-full rounded-xl p-3.5 text-sm font-medium text-left border transition-all duration-200 ${
+                    disableReason === "other"
+                      ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20"
+                      : "bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+                  }`}
+                >
+                  ✏️ Other reason
+                </button>
+
+                {disableReason === "other" && (
+                  <textarea
+                    value={otherReason}
+                    onChange={(e) => setOtherReason(e.target.value)}
+                    placeholder="Provide continuous logging or operational context details..."
+                    className="w-full rounded-xl bg-slate-950/50 border border-slate-700 p-3 text-sm text-slate-200 outline-none focus:border-blue-500 transition-all placeholder:text-slate-500 min-h-[80px]"
+                  />
+                )}
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => setShowDisableModal(false)}
+                  className="flex-1 rounded-xl bg-slate-800 border border-slate-700/80 py-3 text-sm font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition-all"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  disabled={!disableReason || (disableReason === "other" && !otherReason)}
+                  onClick={handleDisableMission}
+                  className="flex-1 rounded-xl bg-rose-600 py-3 text-sm font-semibold text-white transition-all hover:bg-rose-500 disabled:opacity-30 disabled:pointer-events-none shadow-lg shadow-rose-900/20"
+                >
+                  Confirm Disable
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
       </AppShell>
     </div>
   );
