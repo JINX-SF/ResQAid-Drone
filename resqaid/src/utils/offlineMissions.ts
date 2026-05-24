@@ -77,43 +77,77 @@ export const updatePendingMissionStatus = (
 
 import API from "@/api";
 
+// ... Keep your types, getPendingMissions, and savePendingMissions exactly as they are ...
+
 export const syncPendingMissions = async () => {
+  // 1. Get a fresh snapshot of the queue
   const pendingMissions = getPendingMissions();
 
   if (pendingMissions.length === 0) {
-    return {
-      synced: 0,
-      failed: 0,
-    };
+    return { synced: 0, failed: 0 };
   }
 
-  let synced = 0;
-  let failed = 0;
+  let syncedCount = 0;
+  let failedCount = 0;
 
-  for (const mission of pendingMissions) {
+  // We will build a brand new array to replace localStorage cleanly at the end
+  const updatedMissionsQueue = [...pendingMissions];
+
+  for (let i = 0; i < updatedMissionsQueue.length; i++) {
+    const mission = updatedMissionsQueue[i];
+
+    // Skip items already processed or currently syncing in another thread
+    if (mission.status === "synced" || mission.status === "syncing") continue;
+
     try {
-      updatePendingMissionStatus(
-        mission.localId,
-        "syncing"
-      );
+      // Mark as syncing in memory
+      mission.status = "syncing";
 
+      // Send payload to backend
       await API.post("/missions", mission.data);
 
-      removePendingMission(mission.localId);
+      // Success! Mark it as synced so we can filter it out later
+      mission.status = "synced";
+      syncedCount++;
+    } catch (error: any) {
+      failedCount++;
+      
+      console.error("CRITICAL SYNC DEBUG LOG:", {
+        message: error?.message,
+        code: error?.code,
+        hasResponse: !!error?.response,
+        status: error?.response?.status
+      });
 
-      synced++;
-    } catch (error) {
-      updatePendingMissionStatus(
-        mission.localId,
-        "failed"
-      );
+      // 2. STABLIZED NETWORK CHECK
+      // If the backend is turned off entirely, error.response will NEVER exist.
+      // We also check for typical browser offline behaviors.
+      const isServerOffline = 
+        !error.response || 
+        error.code === "ERR_NETWORK" || 
+        error.message?.toLowerCase().includes("network error") ||
+        error.message?.toLowerCase().includes("timeout");
 
-      failed++;
+      if (isServerOffline) {
+        // Server is dead: Rollback status gracefully to wait for the next attempt
+        mission.status = "pending_sync";
+        mission.error = "Server unreachable. Retrying automatically when online...";
+      } else {
+        // Server is running, but rejected data intentionally (400 Bad Request, 500 Crash, etc)
+        mission.status = "sync_failed";
+        mission.error = error?.response?.data?.message || "Invalid mission schema or server validation error.";
+      }
     }
   }
 
+  // 3. Clean up and write to localStorage exactly ONCE
+  // Remove items successfully synced, keep items that are failing or pending retry
+  const finalQueue = updatedMissionsQueue.filter(m => m.status !== "synced");
+  
+  localStorage.setItem(PENDING_MISSIONS_KEY, JSON.stringify(finalQueue));
+
   return {
-    synced,
-    failed,
+    synced: syncedCount,
+    failed: failedCount,
   };
 };

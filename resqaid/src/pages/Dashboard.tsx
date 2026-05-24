@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import axios from "axios";
 import AppShell, { Glass } from "../components/AppShell"; 
+import SyncCenter from "@/components/SyncCenter";
 
 export default function DashboardPage() {
   const [missions, setMissions] = useState([]);
@@ -275,6 +276,7 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+            <SyncCenter />
         </div>
 
         {/* EMERGENCY REQUESTS */}
