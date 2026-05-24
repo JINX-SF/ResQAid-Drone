@@ -8,6 +8,13 @@ import { useNavigate } from "react-router-dom";
 
 import { saveCache, loadCache } from "@/utils/offlineCache";
 
+import {
+  savePendingMission,
+  removePendingMission,
+  updatePendingMissionStatus,
+  syncPendingMissions,
+} from "@/utils/offlineMissions";
+
 type Status = "completed" | "assigned" | "pending" | "active";
 type Urgency = "critical" | "minor" | "low";
 type MType = "Search & rescue" | "Delivery";
@@ -141,33 +148,70 @@ export default function MissionsPage() {
     targetLng: 0,
   });
 
+  // Helper fetch function to reuse across updates/mounts
+  const fetchMissions = async () => {
+    try {
+      const res = await API.get("/missions");
+      const missionsData = res.data?.data || [];
+      setMissions(missionsData);
+      saveCache("missions_cache", missionsData);
+    } catch (err) {
+      console.error("Online missions fetch failed:", err);
+      const cached = loadCache("missions_cache");
+      if (cached?.data) {
+        setMissions(cached.data);
+      }
+    }
+  };
+
+  // 1. Core Initial Data Fetch Hook
   useEffect(() => {
-    const fetchMissions = async () => {
+    fetchMissions();
+  }, []);
+
+  // 2. FIXED: Extracted Background Queue Synchronization Hook out of the click function
+  useEffect(() => {
+    const runSync = async () => {
       try {
-  const res = await API.get("/missions");
-
-  const missionsData = res.data?.data || [];
-
-  setMissions(missionsData);
-
-  saveCache("missions_cache", missionsData);
-} catch (err) {
-  console.error("Online missions fetch failed:", err);
-
-  const cached = loadCache("missions_cache");
-
-  if (cached?.data) {
-    setMissions(cached.data);
-    alert("Offline mode: showing cached missions");
-  }
-}
+        const result = await syncPendingMissions();
+        if (result && result.synced > 0) {
+          alert(`🟢 ${result.synced} offline mission(s) synchronized`);
+          fetchMissions();
+        }
+      } catch (err) {
+        console.error("Background replication failed:", err);
+      }
     };
 
-    fetchMissions();
+    runSync();
+    const interval = setInterval(runSync, 30000);
+    window.addEventListener("online", runSync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("online", runSync);
+    };
   }, []);
 
   const handleAddMission = async () => {
     try {
+      if (!form.locationName.trim()) {
+        alert("Departure location is required");
+        return;
+      }
+      if (!form.startTime) {
+        alert("Mission start time is required");
+        return;
+      }
+      if (Number(form.lat) < -90 || Number(form.lat) > 90) {
+        alert("Latitude must be between -90 and 90");
+        return;
+      }
+      if (Number(form.lng) < -180 || Number(form.lng) > 180) {
+        alert("Longitude must be between -180 and 180");
+        return;
+      }
+
       const missionData = {
         title: form.title || form.type,
         type: form.type,
@@ -193,18 +237,27 @@ export default function MissionsPage() {
         await API.put(`/missions/${editingMissionId}`, missionData);
         alert("Mission updated ✅");
       } else {
-        await API.post("/missions", missionData);
-        alert("Mission added ✅");
+        // Save locally first to secure the persistence state
+        const pendingMission = savePendingMission(missionData);
+
+        try {
+          updatePendingMissionStatus(pendingMission.localId, "syncing");
+          await API.post("/missions", missionData);
+          removePendingMission(pendingMission.localId);
+          alert("🟢 Mission synchronized successfully");
+        } catch (syncError) {
+          updatePendingMissionStatus(pendingMission.localId, "sync_failed");
+          alert("🟡 Mission saved locally. Waiting for network...");
+        }
       }
 
-      const res = await API.get("/missions");
-      setMissions(res.data?.missions || res.data?.data || res.data || []);
+      // Re-fetch all dynamic table views safely
+      await fetchMissions();
       setOpen(false);
       setIsEditing(false);
       setEditingMissionId(null);
     } catch (err: any) {
-      console.log("BACKEND ERROR:", err.response?.data);
-      alert(err.response?.data?.message || "Error adding mission");
+      console.error("Mission creation workflow failed:", err);
     }
   };
 
@@ -297,14 +350,16 @@ export default function MissionsPage() {
                     />
                   </Field>
 
-                  <select
-                    className={inputCls}
-                    value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value })}
-                  >
-                    <option value="SAR">Search & rescue</option>
-                    <option value="delivery">Delivery</option>
-                  </select>
+                  <Field label="Type">
+                    <select
+                      className={inputCls}
+                      value={form.type}
+                      onChange={(e) => setForm({ ...form, type: e.target.value })}
+                    >
+                      <option value="SAR">Search & rescue</option>
+                      <option value="delivery">Delivery</option>
+                    </select>
+                  </Field>
 
                   <Field label="Status">
                     <select
@@ -319,12 +374,14 @@ export default function MissionsPage() {
                     </select>
                   </Field>
 
-                  <input
-                    className={inputCls}
-                    type="number"
-                    value={form.payloadWeight}
-                    onChange={(e) => setForm({ ...form, payloadWeight: Number(e.target.value) })}
-                  />
+                  <Field label="Payload Weight (kg)">
+                    <input
+                      className={inputCls}
+                      type="number"
+                      value={form.payloadWeight}
+                      onChange={(e) => setForm({ ...form, payloadWeight: Number(e.target.value) })}
+                    />
+                  </Field>
 
                   <Field label="Urgency">
                     <select
@@ -350,18 +407,19 @@ export default function MissionsPage() {
                 </div>
               </section>
 
-              {/* 2. Location */}
+              {/* 2. Departure Location */}
               <section className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
                 <h3 className="flex items-center gap-2 mb-4 font-semibold">
                   <span className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-sm">2</span>
                   Departure Location
                 </h3>
                 <div className="space-y-3">
-                  <Field label="Location">
+                  <Field label="Location Name">
                     <input
                       className={inputCls}
-                      value={`📍 ${form.lat}, ${form.lng}`}
-                      readOnly
+                      placeholder="Base Alpha"
+                      value={form.locationName}
+                      onChange={(e) => setForm({ ...form, locationName: e.target.value })}
                     />
                   </Field>
                   <Field label="Latitude">
@@ -392,9 +450,10 @@ export default function MissionsPage() {
                   Target Area
                 </h3>
                 <div className="space-y-3">
-                  <Field label="Target area">
+                  <Field label="Target area name">
                     <input
                       className={inputCls}
+                      placeholder="Sector 7"
                       value={form.targetArea}
                       onChange={(e) => setForm({ ...form, targetArea: e.target.value })}
                     />
@@ -463,9 +522,9 @@ export default function MissionsPage() {
                 });
                 setOpen(true);
               }}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-emerald-400"
             >
-              +new mission
+              + new mission
             </button>
           </div>
 
@@ -478,6 +537,7 @@ export default function MissionsPage() {
             <div>Start time</div>
             <div>Location</div>
             <div>Target area</div>
+            <div className="text-right">Actions</div>
           </div>
 
           <ul>
@@ -486,7 +546,7 @@ export default function MissionsPage() {
                 key={m._id}
                 className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 px-8 py-5 border-b border-white/5 hover:bg-white/[0.03] transition-all"
               >
-                <div className="font-medium text-white/80">{m._id.slice(-5)}</div>
+                <div className="font-medium text-white/80">{m._id?.slice(-5) || "N/A"}</div>
                 <div className="font-medium text-white/90">{m.type}</div>
                 <div className="font-medium text-white/90"><StatusPill status={m.status} /></div>
                 <div className="font-medium text-white/85">{m.payloadWeight} kg</div>
@@ -498,8 +558,8 @@ export default function MissionsPage() {
                       ? new Date(m.createdAt).toLocaleString()
                       : "—"}
                 </div>
-                <div className="font-medium text-white/80">📍 {m.departureLocation?.lat}, {m.departureLocation?.lng}</div>
-                <div className="font-medium text-white/80">🎯 {m.targetArea?.lat}, {m.targetArea?.lng}</div>
+                <div className="font-medium text-white/80">📍 {m.departureLocation?.lat || 0}, {m.departureLocation?.lng || 0}</div>
+                <div className="font-medium text-white/80">🎯 {m.targetArea?.lat || 0}, {m.targetArea?.lng || 0}</div>
 
                 <div className="flex items-center justify-end gap-2">
                   <button
@@ -516,7 +576,6 @@ export default function MissionsPage() {
                   </button>
                   <button
                     onClick={() => {
-                      disableMission(m._id);
                       setSelectedMission(m);
                       setShowDisableModal(true);
                     }}
