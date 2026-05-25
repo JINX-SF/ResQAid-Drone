@@ -30,6 +30,7 @@ import MyRequestsPage from "./pages/MyRequestsPage";
 import DisabledItemsPage from "./pages/DisabledItemsPage";
 import DroneHistory from "./pages/DroneHistory";
 import MissionHistory from "./pages/MissionHistory";
+import MissionIntelligencePage from "./pages/MissionIntelligencePage";
 
 import Reset from "./pages/Reset";
 
@@ -81,6 +82,7 @@ const App = () => (
            <Route path="/missions/edit/:id" element={<EditMission />} />
 
            <Route path="/requests/:id" element={<RequestDetails />} />
+           <Route path="/requests/:id/intelligence" element={<MissionIntelligencePage />} />
            <Route path="/my-requests" element={<MyRequestsPage />} />
            <Route path="/disabled" element={<DisabledItemsPage />} />
 

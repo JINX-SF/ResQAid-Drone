@@ -1,54 +1,144 @@
 const EmergencyRequest = require("../models/EmergencyRequest");
 const Mission = require("../models/Mission");
 const Drone = require("../models/Drone");
+const { haversineKm, flightTimeMinutes } = require("../utils/geo");
+const { estimateBatteryDrain }           = require("../utils/battery");
+const { getRiskScore, getConditionLabel } = require("../utils/weather");
+
+// ── deterministic RNG seeded from request _id ─────────────────────────────────
+// Same request ID → always same numbers. Fixes the "2.8 then 2.9 on refresh" bug.
+function idToSeed(idStr) {
+  return idStr.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+}
+function makeRng(seed) {
+  let s = seed;
+  return function rand() {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+function randInt(rand, min, max)            { return Math.round(min + rand() * (max - min)); }
+function randFloat(rand, min, max, dec = 1) { return parseFloat((min + rand() * (max - min)).toFixed(dec)); }
+
+// ── sensor map ────────────────────────────────────────────────────────────────
+const SENSOR_MAP = {
+  sar:        ["Thermal Camera", "HD Camera", "GPS Tracker"],
+  logistics:  ["GPS", "Weight Sensor", "Stabilized Camera"],
+  oilgas:     ["Thermal Camera", "Gas Sensor", "Zoom Camera"],
+  industrial: ["Zoom Camera", "Thermal Camera", "AI Detection"],
+  security:   ["Night Vision", "HD Camera", "AI Detection"],
+};
+
+// ── payload compatibility by mission type ─────────────────────────────────────
+const PAYLOAD_MAP = {
+  logistics:  10,
+  sar:         5,
+  oilgas:      3,
+  industrial:  3,
+  security:    2,
+};
+
+// ── score a single drone against a request ────────────────────────────────────
+// FIX: was rejecting anything not "idle" — now only rejects "disabled"
+// drones that are "in_mission" or "maintenance" still get scored so the
+// list never shows 0 results when all drones are busy
+function scoreDroneForRequest(drone, request, weatherRisk) {
+  // hard filter: disabled drones are never usable
+  if (drone.status === "disabled" || drone.isDisabled) return null;
+  // hard filter: must have at least 30% battery
+  if (drone.battery < 30) return null;
+
+  const targetLat = request.location?.lat || 0;
+  const targetLng = request.location?.lng || 0;
+
+  const droneLat = drone.homeBase?.lat || drone.location?.lat || 0;
+  const droneLng = drone.homeBase?.lng || drone.location?.lng || 0;
+
+  // If the drone has no coordinates at all, skip it
+  if (!droneLat && !droneLng) return null;
+
+  const distanceKm = haversineKm(
+    { lat: droneLat, lng: droneLng },
+    { lat: targetLat, lng: targetLng }
+  );
+
+  // hard filter: drone must physically reach the target (round trip)
+  const effectiveRange = (drone.maxRange || 50) * (drone.battery / 100);
+  if (distanceKm * 2 > effectiveRange) return null;
+
+  // ── scoring formula ────────────────────────────────────────────────────────
+  // Battery (35 pts)
+  const batteryScore = (drone.battery / 100) * 35;
+
+  // Distance (25 pts)
+  const maxRange = drone.maxRange || 50;
+  const distanceScore = Math.max(0, 25 - (distanceKm / maxRange) * 25);
+
+  // Payload compatibility (20 pts)
+  const neededPayload = PAYLOAD_MAP[request.type] || 3;
+  const payloadScore = drone.payloadCapacity >= neededPayload
+    ? 20
+    : (drone.payloadCapacity / neededPayload) * 20;
+
+  // Sensor compatibility (20 pts)
+  let sensorScore = 10;
+  if (request.type === "sar"       && drone.type === "SAR")      sensorScore = 20;
+  if (request.type === "logistics" && drone.type === "delivery") sensorScore = 20;
+  if (drone.type === "hybrid")                                    sensorScore = 15;
+
+  // Status bonus/penalty
+  // idle = full score, in_mission = -15 (busy but scores for ranking),
+  // maintenance = -25 (possible if nothing else available)
+  const statusPenalty = drone.status === "idle" ? 0
+    : drone.status === "in_mission" ? 15
+    : 25;
+
+  // Weather penalty (up to -10 pts)
+  const weatherPenalty = weatherRisk * 1.5;
+
+  const total = batteryScore + distanceScore + payloadScore + sensorScore - weatherPenalty - statusPenalty;
+
+  const speedKmh     = drone.speed || 60;
+  const etaMinutes   = Math.round(flightTimeMinutes(distanceKm, speedKmh));
+  const estimatedDrain = Math.round((distanceKm * 2 / (drone.maxRange || 50)) * 100);
+
+  return {
+    score:          Math.max(0, Math.round(total * 10) / 10),
+    distanceKm:     Math.round(distanceKm * 10) / 10,
+    etaMinutes,
+    estimatedDrain: Math.min(100, estimatedDrain),
+  };
+}
+
+// ── urgency → risk multiplier ─────────────────────────────────────────────────
+const URGENCY_RISK = { Critical: 35, High: 25, Medium: 15, Low: 5 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTROLLERS
+// ─────────────────────────────────────────────────────────────────────────────
 
 exports.createRequest = async (req, res, next) => {
   try {
     const request = await EmergencyRequest.create({
-      // USER
-      user: req.user?._id || null,
-
-      // SERVICE TYPE
-      type: req.body.type,
-
-      // DESCRIPTION
+      user:        req.user?._id || null,
+      type:        req.body.type,
       description: req.body.description || "",
-
-      // URGENCY
-      urgency: req.body.urgency || "Medium",
-
-      // DYNAMIC DETAILS
-      details: req.body.details || {},
-
-      // PHONE
-      phone: req.body.phone || "",
-
-      // MAIN LOCATION
+      urgency:     req.body.urgency || "Medium",
+      details:     req.body.details || {},
+      phone:       req.body.phone || "",
       location: {
         name: req.body.locationName || "",
-
-        lat: Number(req.body.lat) || 0,
-
-        lng: Number(req.body.lng) || 0,
+        lat:  Number(req.body.lat)  || 0,
+        lng:  Number(req.body.lng)  || 0,
       },
-
-      // LOGISTICS PICKUP LOCATION
       fromLocation: {
         name: req.body.fromLocationName || "",
-
-        lat: Number(req.body.fromLat) || 0,
-
-        lng: Number(req.body.fromLng) || 0,
+        lat:  Number(req.body.fromLat)  || 0,
+        lng:  Number(req.body.fromLng)  || 0,
       },
-
-      // STATUS
       status: "pending",
     });
-
-    res.status(201).json({
-      success: true,
-      data: request,
-    });
+    res.status(201).json({ success: true, data: request });
   } catch (err) {
     next(err);
   }
@@ -57,18 +147,8 @@ exports.createRequest = async (req, res, next) => {
 exports.getEmergencyRequestById = async (req, res, next) => {
   try {
     const request = await EmergencyRequest.findById(req.params.id);
-
-    if (!request) {
-      return res.status(404).json({
-        success: false,
-        message: "Request not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      data: request,
-    });
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+    res.json({ success: true, data: request });
   } catch (err) {
     next(err);
   }
@@ -79,25 +159,16 @@ exports.getRequests = async (req, res, next) => {
     const requests = await EmergencyRequest.find()
       .populate("user", "name email phone")
       .sort({ createdAt: -1 });
-
-    res.json({
-      success: true,
-      data: requests,
-    });
+    res.json({ success: true, data: requests });
   } catch (err) {
     next(err);
   }
 };
+
 exports.getMyRequests = async (req, res, next) => {
   try {
-    const requests = await EmergencyRequest.find({
-      user: req.user._id,
-    }).sort({ createdAt: -1 });
-
-    res.json({
-      success: true,
-      data: requests,
-    });
+    const requests = await EmergencyRequest.find({ user: req.user._id }).sort({ createdAt: -1 });
+    res.json({ success: true, data: requests });
   } catch (err) {
     next(err);
   }
@@ -108,111 +179,82 @@ exports.getEmergencyRequests = async (req, res, next) => {
     const requests = await EmergencyRequest.find()
       .populate("user", "name email")
       .sort({ createdAt: -1 });
-
     console.log("REQUESTS FOUND:", requests.length);
-
     res.status(200).json(requests);
   } catch (error) {
     next(error);
   }
 };
+
 exports.getRequestById = async (req, res, next) => {
   try {
     const request = await EmergencyRequest.findById(req.params.id)
       .populate("user", "name email phone");
-
-    if (!request) {
-      return res.status(404).json({
-        success: false,
-        message: "Request not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      data: request,
-    });
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+    res.json({ success: true, data: request });
   } catch (err) {
     next(err);
   }
 };
 
+// ── acceptRequest: now accepts an optional droneId from the body ──────────────
+// Frontend sends: { droneId: "..." } when user picks a specific drone
 exports.acceptRequest = async (req, res, next) => {
   try {
     const request = await EmergencyRequest.findById(req.params.id);
-
-    if (!request) {
-      return res.status(404).json({
-        success: false,
-        message: "Request not found",
-      });
-    }
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
 
     request.status = "accepted";
     await request.save();
 
     const mission = await Mission.create({
-      title: `Emergency mission - ${request.type}`,
-
-      type: request.type === "medical" ? "general" : "SAR",
-
-      status: "pending",
-
-      urgency: request.urgency || "Low",
-
+      title:         `Emergency mission - ${request.type}`,
+      type:          request.type === "medical" ? "general" : "SAR",
+      status:        "pending",
+      urgency:       request.urgency || "Low",
       payloadWeight: 0,
-
       targetArea: {
-        lat: request.location?.lat || 0,
-        lng: request.location?.lng || 0,
+        lat:      request.location?.lat || 0,
+        lng:      request.location?.lng || 0,
         radiusKm: 1,
       },
-
-      start: {
-        x: 0,
-        y: 0,
-        z: 0,
-      },
-
+      start:       { x: 0, y: 0, z: 0 },
       destination: {
         x: request.location?.lat || 0,
         y: request.location?.lng || 0,
         z: 0,
       },
-
       description: request.description || "",
-
-      request: request._id,
+      request:     request._id,
     });
 
-  // FIND BEST AVAILABLE DRONE
-const availableDrone = await Drone.findOne({
-  status: "idle",
-})
-.sort({ battery: -1 });
+    // FIX: if a specific droneId was passed from MissionIntelligencePage, use it.
+    // Otherwise fall back to the best idle drone (original behaviour).
+    let droneToAssign = null;
 
-if (availableDrone) {
+    if (req.body.droneId) {
+      // User explicitly picked this drone from the comparison chart
+      droneToAssign = await Drone.findById(req.body.droneId);
+    }
 
-  // ASSIGN DRONE TO MISSION
-  mission.drone = availableDrone._id;
+    if (!droneToAssign) {
+      // Fallback: pick best idle drone by battery
+      droneToAssign = await Drone.findOne({ status: "idle" }).sort({ battery: -1 });
+    }
 
-  mission.status = "assigned";
+    if (droneToAssign) {
+      mission.drone  = droneToAssign._id;
+      mission.status = "assigned";
+      await mission.save();
 
-  await mission.save();
-
-  // UPDATE DRONE STATUS
-  availableDrone.status = "in_mission";
-
-  await availableDrone.save();
-}
+      droneToAssign.status = "in_mission";
+      await droneToAssign.save();
+    }
 
     res.json({
       success: true,
       message: "Request accepted and mission created",
-      data: {
-        request,
-        mission,
-      },
+      data: { request, mission },
     });
   } catch (err) {
     next(err);
@@ -222,23 +264,10 @@ if (availableDrone) {
 exports.rejectRequest = async (req, res, next) => {
   try {
     const request = await EmergencyRequest.findById(req.params.id);
-
-    if (!request) {
-      return res.status(404).json({
-        success: false,
-        message: "Request not found",
-      });
-    }
-
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
     request.status = "rejected";
-
     await request.save();
-
-    res.json({
-      success: true,
-      message: "Mission rejected",
-      data: request,
-    });
+    res.json({ success: true, message: "Mission rejected", data: request });
   } catch (err) {
     next(err);
   }
@@ -247,10 +276,152 @@ exports.rejectRequest = async (req, res, next) => {
 exports.deleteRequest = async (req, res, next) => {
   try {
     await EmergencyRequest.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Request deleted" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── updateStatus: used by frontend Reject/Accept buttons via PATCH /:id/status ─
+// Problem 4 fix — this endpoint was missing, causing silent failures
+exports.updateStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    const allowed = ["pending", "accepted", "rejected", "in_progress", "completed"];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ success: false, message: `Invalid status: ${status}` });
+    }
+    const updated = await EmergencyRequest.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ success: false, message: "Request not found" });
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── getMissionIntelligence ────────────────────────────────────────────────────
+// Problem 2 fix: all Math.random() calls replaced with seeded RNG so the
+// same request ID always produces the same weather/risk/obstacle values.
+// Problem 3 fix: drone filter changed from status === "idle" only to
+// include all non-disabled drones so the list is never empty.
+exports.getMissionIntelligence = async (req, res, next) => {
+  try {
+    const request = await EmergencyRequest.findById(req.params.id)
+      .populate("user", "name email");
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found" });
+    }
+
+    // ── seeded RNG — same request ID → same numbers every refresh ────────────
+    const rand = makeRng(idToSeed(request._id.toString()));
+
+    // ── weather (deterministic per request) ──────────────────────────────────
+    const weather = {
+      windSpeed:   randInt(rand, 10, 35),      // km/h
+      visibility:  randInt(rand, 4, 10),       // km
+      temperature: randInt(rand, 18, 30),      // °C
+      rainMm:      randFloat(rand, 0, 3, 1),   // mm
+      humidity:    randInt(rand, 40, 80),      // %
+    };
+
+    const weatherRisk  = getRiskScore(weather);   // 0–7
+    const weatherLabel = getConditionLabel(weather);
+    const flightSafety = Math.max(0, Math.round(100 - weatherRisk * 12));
+
+    // ── score all non-disabled drones ─────────────────────────────────────────
+    // FIX: was fetching with status:{$ne:"disabled"} but then scoreDroneForRequest
+    // hard-rejected anything not "idle" — so if all drones were in_mission the
+    // result was always 0. Now we fetch all non-disabled and only reject disabled.
+    const allDrones = await Drone.find({
+      status:     { $ne: "disabled" },
+      isDisabled: { $ne: true },
+    });
+
+    const scored = allDrones
+      .map(drone => {
+        const result = scoreDroneForRequest(drone, request, weatherRisk);
+        if (!result) return null;
+        return {
+          drone: {
+            _id:             drone._id,
+            name:            drone.name,
+            status:          drone.status,
+            battery:         drone.battery,
+            speed:           drone.speed,
+            maxRange:        drone.maxRange,
+            payloadCapacity: drone.payloadCapacity,
+            type:            drone.type,
+            location:        drone.location,
+            homeBase:        drone.homeBase,
+          },
+          score:          result.score,
+          distanceKm:     result.distanceKm,
+          etaMinutes:     result.etaMinutes,
+          estimatedDrain: result.estimatedDrain,
+          rank:           0,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((entry, i) => ({ ...entry, rank: i + 1 }));
+
+    // ── mission risk (deterministic — no more random inputs) ─────────────────
+    const urgencyRisk  = URGENCY_RISK[request.urgency] || 15;
+    const distanceRisk = scored[0] ? Math.min(20, scored[0].distanceKm / 2) : 10;
+    const batteryRisk  = scored[0] ? Math.max(0, 15 - (scored[0].drone.battery / 100) * 15) : 10;
+    const missionRisk  = Math.min(95, Math.round(urgencyRisk + distanceRisk + batteryRisk + weatherRisk * 2));
+
+    // ── target area (areaSize now seeded, not random) ─────────────────────────
+    const areaSize = request.details?.areaSize || randFloat(rand, 1.5, 3.5, 1);
+    const altitude = request.type === "security" ? 80 : 120;
+    const scanTime = Math.round(Number(areaSize) * 7 + 5);
+
+    // ── obstacle simulation (stable — based on seeded weather values) ─────────
+    const obstacles = [];
+    if (weather.windSpeed > 25)
+      obstacles.push({ type: "weather",    label: "High wind zone detected",       icon: "⚠" });
+    if (weather.visibility < 5)
+      obstacles.push({ type: "visibility", label: "Low visibility conditions",     icon: "🌫" });
+    if (request.urgency === "Critical")
+      obstacles.push({ type: "terrain",    label: "Priority airspace zone active", icon: "🚨" });
+    obstacles.push({ type: "info", label: "Standard flight corridor available", icon: "✅" });
+
+    // ── sensors ───────────────────────────────────────────────────────────────
+    const sensors = SENSOR_MAP[request.type] || ["HD Camera", "GPS Tracker"];
 
     res.json({
       success: true,
-      message: "Request deleted",
+      data: {
+        request: {
+          _id:         request._id,
+          type:        request.type,
+          urgency:     request.urgency,
+          status:      request.status,
+          location:    request.location,
+          fromLocation:request.fromLocation,
+          description: request.description,
+          details:     request.details,
+          user:        request.user,
+          createdAt:   request.createdAt,
+        },
+        weather: {
+          ...weather,
+          label:       weatherLabel,
+          flightSafety,
+          riskScore:   weatherRisk,
+        },
+        topDrones:  scored,
+        missionRisk,
+        targetArea: { areaSize: Number(areaSize), altitude, scanTime },
+        obstacles,
+        sensors,
+      },
     });
   } catch (err) {
     next(err);
