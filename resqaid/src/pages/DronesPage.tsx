@@ -4,8 +4,13 @@ import DroneIcon from "@/components/DroneIcon";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "@/api";
+<<<<<<< Updated upstream
 import { saveCache, loadCache } from "@/utils/offlineCache";
 type Status = "in mission" | "active" | "offline";
+=======
+
+type Status = "in mission" | "active" | "offline" | "idle";
+>>>>>>> Stashed changes
 type DType = "Search & rescue" | "Delivery";
 
 
@@ -20,6 +25,9 @@ function StatusPill({ status }: { status: Status }) {
 
     offline:
       "bg-red-500/15 text-red-200 border border-red-400/30",
+
+    idle:
+      "bg-gray-500/15 text-gray-200 border border-gray-400/30",
   };
 
   return (

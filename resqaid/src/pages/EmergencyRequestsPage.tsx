@@ -14,9 +14,13 @@ import {
 } from "lucide-react";
 
 import AppShell from "@/components/AppShell";
+<<<<<<< Updated upstream
 import { saveCache, loadCache } from "@/utils/offlineCache";
 
 
+=======
+import {  useLocation } from "react-router-dom";
+>>>>>>> Stashed changes
 
 type RequestItem = {
   _id: string;
@@ -185,10 +189,10 @@ export default function EmergencyRequestsPage() {
   setLoading(false);
 }
   };
-
+const location = useLocation();
   useEffect(() => {
     fetchRequests();
-  }, []);
+  }, [location.key]);
 
   return (
     <AppShell>
