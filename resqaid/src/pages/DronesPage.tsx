@@ -4,13 +4,10 @@ import DroneIcon from "@/components/DroneIcon";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "@/api";
-<<<<<<< Updated upstream
 import { saveCache, loadCache } from "@/utils/offlineCache";
-type Status = "in mission" | "active" | "offline";
-=======
 
 type Status = "in mission" | "active" | "offline" | "idle";
->>>>>>> Stashed changes
+
 type DType = "Search & rescue" | "Delivery";
 
 
