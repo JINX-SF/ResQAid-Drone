@@ -38,8 +38,8 @@ disableReason: {
 
     type: {
       type: String,
-      enum: ["SAR", "logistics", "oilgas", "industrial", "security", "general"],
-      default: "SAR",
+      enum: ["camera_quadcopter", "thermal_drone", "fixed_wing", "vtol_hybrid", "sensor_drone"],
+      default: "camera_quadcopter",
     },
     lastEditedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -86,7 +86,7 @@ DroneSchema.methods.updatePosition = function (newPosition) {
 DroneSchema.methods.consumeBattery = function (amount) {
   this.battery = Math.max(0, this.battery - amount);
   if (this.battery <= 15) {
-    this.status = "maintenance";
+    this.status = "disabled";
   }
 };
 
