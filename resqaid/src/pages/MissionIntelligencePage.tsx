@@ -108,17 +108,24 @@ function SectionTitle({ icon, title, sub }: { icon: React.ReactNode; title: stri
 
 function serviceLabel(type: string) {
   const map: Record<string, string> = {
-    sar: "Search & Rescue", logistics: "Remote Logistics",
-    oilgas: "Oil & Gas Monitoring", industrial: "Industrial Inspection", security: "Security Patrol",
+    thermal_drone:     "Thermal Drone · Search & Rescue",
+vtol_hybrid:       "VTOL Hybrid · Autonomous Logistics",
+sensor_drone:      "Sensor Drone · Environmental Monitoring",
+fixed_wing:        "Fixed-Wing Drone · Long-Range Patrol",
+camera_quadcopter: "Camera Quadcopter · Surveillance & Mapping",
   };
   return map[type] || type;
 }
 
 function serviceIcon(type: string) {
   const icons: Record<string, string> = {
-    sar: "🔴", logistics: "🔵", oilgas: "🟠", industrial: "🟡", security: "🟢",
+    thermal_drone:     "🌡️",
+    vtol_hybrid:       "🚁",
+    sensor_drone:      "📡",
+    fixed_wing:        "✈️",
+    camera_quadcopter: "📷",
   };
-  return icons[type] || "⚪";
+  return icons[type] || "❓";
 }
 
 function safetyLabel(score: number) {
@@ -155,7 +162,30 @@ function riskBg(risk: number) {
   if (risk >= 25) return "from-yellow-500/20 to-yellow-500/5 border-yellow-500/30";
   return "from-emerald-500/20 to-emerald-500/5 border-emerald-500/30";
 }
+// ── Drone-type risk & success modifiers ───────────────────────────────────────
+function droneTypeRiskModifier(type: string, baseRisk: number): number {
+  // Each drone type has strengths — adjust mission risk accordingly
+  const modifiers: Record<string, number> = {
+    thermal_drone:     -10,  // thermal sensors greatly improve SAR success → lower risk
+    camera_quadcopter:  +5,  // shorter endurance (25–30 min) → slightly higher risk
+    fixed_wing:        -8,   // long endurance (90+ min) → lower patrol risk
+    vtol_hybrid:        0,   // balanced all-rounder
+    sensor_drone:      +6,   // niche environmental role → higher general mission risk
+  };
+  return Math.min(100, Math.max(0, baseRisk + (modifiers[type] ?? 0)));
+}
 
+function droneTypeSuccessRate(type: string, baseScore: number): number {
+  // Endurance & role alignment bonus on top of raw match score
+  const bonuses: Record<string, number> = {
+    thermal_drone:      +8,  // purpose-built for SAR → high success uplift
+    camera_quadcopter:  +5,  // strong surveillance match
+    fixed_wing:        +10,  // endurance is a massive patrol advantage
+    vtol_hybrid:        +4,  // logistics efficiency bonus
+    sensor_drone:       +3,  // solid for environmental missions
+  };
+  return Math.min(100, Math.max(0, baseScore + (bonuses[type] ?? 0)));
+}
 function rankLabel(rank: number) {
   if (rank === 1) return { label: "Best Match",  color: "text-yellow-300 border-yellow-400/40 bg-yellow-400/10" };
   if (rank === 2) return { label: "2nd Choice",  color: "text-slate-300 border-slate-400/40 bg-slate-400/10" };
@@ -478,13 +508,14 @@ const handleAssign = () => {
   const { request, weather, topDrones, missionRisk, targetArea, obstacles, sensors } = intel;
   const bestDrone = topDrones[selectedDroneIdx];
 
-  const radarData = [
-    { metric: "Weather",  value: Math.round(weather.flightSafety * 0.6) },
-    { metric: "Battery",  value: bestDrone ? bestDrone.drone.battery : 0 },
-    { metric: "Range",    value: bestDrone ? Math.round((1 - bestDrone.distanceKm / (bestDrone.drone.maxRange || 50)) * 100) : 50 },
-    { metric: "Urgency",  value: request.urgency === "Critical" ? 95 : request.urgency === "High" ? 70 : 40 },
-    { metric: "Safety",   value: Math.max(0, 100 - missionRisk) },
-  ];
+  const adjustedRisk = droneTypeRiskModifier(bestDrone?.drone.type ?? "", missionRisk);
+const radarData = [
+  { metric: "Weather",  value: Math.round(weather.flightSafety * 0.6) },
+  { metric: "Battery",  value: bestDrone ? bestDrone.drone.battery : 0 },
+  { metric: "Range",    value: bestDrone ? Math.round((1 - bestDrone.distanceKm / (bestDrone.drone.maxRange || 50)) * 100) : 50 },
+  { metric: "Urgency",  value: request.urgency === "Critical" ? 95 : request.urgency === "High" ? 70 : 40 },
+  { metric: "Safety",   value: Math.max(0, 100 - adjustedRisk) },
+];
 
   const batteryBarData = topDrones.map(e => ({
     name: e.drone.name.split(" ").slice(-1)[0],
@@ -597,10 +628,11 @@ const handleAssign = () => {
                   <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3">
                     <p className="text-xs font-bold text-primary mb-1">AI Detection (Coming Soon)</p>
                     <p className="text-xs text-muted-foreground">
-                      {request.type === "sar"      ? "Person detection · Thermal human scanning · Smoke detection"
-                        : request.type === "oilgas"     ? "Leak detection · Thermal anomaly · Crack scanning"
-                        : request.type === "security"   ? "Movement detection · Vehicle tracking · Intrusion alerts"
-                        : "Structural analysis · Thermal imaging · AI anomaly detection"}
+                      { request.type === "thermal_drone"     ? "Thermal imaging · Heat signature detection · Night SAR · Endurance: 20–25 min"
+: request.type === "camera_quadcopter" ? "HD surveillance · Area mapping · Visual tracking · Endurance: 25–30 min"
+: request.type === "fixed_wing"        ? "Long-range patrol · Perimeter scan · Autonomous cruise · Endurance: 90+ min"
+: request.type === "vtol_hybrid"       ? "Payload delivery · Hover & transition · Autonomous logistics"
+: request.type === "sensor_drone"      ? "Gas leak detection · Air quality · Environmental sensor sweep": "General purpose drone capabilities and analysis" }
                     </p>
                   </div>
                 </Glass>
@@ -677,18 +709,18 @@ const handleAssign = () => {
                 <SectionTitle icon={<Radar className="h-4 w-4 text-primary" />} title="Mission Risk Score" />
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`text-4xl font-bold ${riskColor(missionRisk)}`}>{missionRisk}%</p>
+                    <p className={`text-4xl font-bold ${riskColor(adjustedRisk)}`}>{adjustedRisk}%</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {missionRisk >= 70 ? "High risk — proceed with caution"
-                        : missionRisk >= 45 ? "Moderate risk — review conditions"
-                        : missionRisk >= 25 ? "Low-moderate risk — good to go"
+                      {adjustedRisk >= 70 ? "High risk — proceed with caution"
+                        : adjustedRisk >= 45 ? "Moderate risk — review conditions"
+                        : adjustedRisk >= 25 ? "Low-moderate risk — good to go"
                         : "Low risk — optimal conditions"}
                     </p>
                   </div>
                   <div className="relative flex items-center justify-center">
-                    <RingProgress value={missionRisk} size={72} stroke={6}
-                      color={missionRisk >= 70 ? "#ef4444" : missionRisk >= 45 ? "#f97316" : missionRisk >= 25 ? "#eab308" : "#22c55e"} />
-                    <span className={`absolute text-xs font-bold ${riskColor(missionRisk)}`}>{missionRisk}%</span>
+                    <RingProgress value={adjustedRisk} size={72} stroke={6}
+                      color={adjustedRisk >= 70 ? "#ef4444" : adjustedRisk >= 45 ? "#f97316" : adjustedRisk >= 25 ? "#eab308" : "#22c55e"} />
+                    <span className={`absolute text-xs font-bold ${riskColor(adjustedRisk)}`}>{adjustedRisk}%</span>
                   </div>
                 </div>
                 <div className="mt-4 h-48">
@@ -794,10 +826,10 @@ const handleAssign = () => {
                           <div>
                             <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
                               <span className="flex items-center gap-1"><Sparkles className="h-3 w-3" />Match Score</span>
-                              <span className="font-semibold text-white">{entry.score}%</span>
+                              <span className="font-semibold text-white">{droneTypeSuccessRate(entry.drone.type, entry.score)}%</span>
                             </div>
                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, entry.score)}%` }} />
+                              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${droneTypeSuccessRate(entry.drone.type, entry.score)}%` }} />
                             </div>
                           </div>
                         </div>
