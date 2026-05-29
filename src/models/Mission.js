@@ -6,19 +6,17 @@ const MissionSchema = new mongoose.Schema(
 
     type:  {
       type: String,
-      enum: ["SAR", "delivery", "general"],
+      enum: ["SAR", "logistics", "oilgas", "industrial", "security"],
       default: "general",
     },
 
   status: {
   type: String,
   enum: [
-    "pending",
     "assigned",
     "active",
     "completed",
-    "cancelled",
-   "disabled",
+    "disabled",
   ],
   default: "pending",
 },
@@ -71,6 +69,7 @@ disableReason: {
     response: { type: mongoose.Schema.Types.Mixed, default: null },
 
     startedAt:   { type: Date, default: null },
+startTime: { type: Date, default: null },
     completedAt: { type: Date, default: null },
   },
   { timestamps: true }

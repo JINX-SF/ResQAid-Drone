@@ -64,7 +64,17 @@ function scoreDroneForRequest(drone, request, weatherRisk) {
 
   // hard filter: drone must physically reach the target (round trip)
   const effectiveRange = (drone.maxRange || 50) * (drone.battery / 100);
-  if (distanceKm * 2 > effectiveRange) return null;
+if (distanceKm * 2 > effectiveRange) {
+  return {
+    score: 5,
+
+    distanceKm: Math.round(distanceKm * 10) / 10,
+
+    etaMinutes: 999,
+
+    estimatedDrain: 100,
+  };
+}
 
   // ── scoring formula ────────────────────────────────────────────────────────
   // Battery (35 pts)
@@ -209,7 +219,18 @@ exports.acceptRequest = async (req, res, next) => {
 
     const mission = await Mission.create({
       title:         `Emergency mission - ${request.type}`,
-      type:          request.type === "medical" ? "general" : "SAR",
+     type: (() => {
+  const typeMap = {
+    sar:        "SAR",
+    medical:    "logistics",       
+    logistics:  "logistics",
+    oilgas:     "oilgas",
+    industrial: "industrial",
+    security:   "security",
+    general: "general",
+  };
+  return typeMap[request.type] || "general"; // fallback to general if unknown
+})(),
       status:        "pending",
       urgency:       request.urgency || "Low",
       payloadWeight: 0,
@@ -247,7 +268,13 @@ exports.acceptRequest = async (req, res, next) => {
       mission.status = "assigned";
       await mission.save();
 
-      droneToAssign.status = "in_mission";
+      droneToAssign.status = "assigned";
+
+droneToAssign.assignedMissionName =
+  mission.title;
+
+droneToAssign.assignedAt =
+  new Date();
       await droneToAssign.save();
     }
 
@@ -337,8 +364,9 @@ exports.getMissionIntelligence = async (req, res, next) => {
     // FIX: was fetching with status:{$ne:"disabled"} but then scoreDroneForRequest
     // hard-rejected anything not "idle" — so if all drones were in_mission the
     // result was always 0. Now we fetch all non-disabled and only reject disabled.
+    // Only show drones that are actually available — exclude in_mission and disabled
     const allDrones = await Drone.find({
-      status:     { $ne: "disabled" },
+      status:     { $nin: ["disabled", "in_mission"] },
       isDisabled: { $ne: true },
     });
 

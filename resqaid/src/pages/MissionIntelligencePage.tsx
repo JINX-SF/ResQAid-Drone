@@ -41,6 +41,7 @@ import "leaflet/dist/leaflet.css";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon   from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import API from "@/api";
 // @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
@@ -421,27 +422,22 @@ export default function MissionIntelligencePage() {
     }
   };
 
-  // FIX: now sends the selected drone's _id to the backend
-  // so the exact drone the operator picked from the chart gets assigned
-  const handleAssign = async () => {
-    if (!intel || intel.topDrones.length === 0) return;
-    setAssigning(true);
-    try {
-      const token = localStorage.getItem("token");
-      const selectedDrone = intel.topDrones[selectedDroneIdx];
-      await fetch(`http://localhost:5000/api/emergency-requests/${id}/accept`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ droneId: selectedDrone.drone._id }),
-      });
-      setAssigned(true);
-      setTimeout(() => navigate("/missionsPage"), 1500);
-    } catch (e) {
-      console.error("Assignment failed:", e);
-    } finally {
-      setAssigning(false);
-    }
-  };
+  
+const handleAssign = () => {
+  if (!intel || intel.topDrones.length === 0) return;
+
+  const selectedDrone = intel.topDrones[selectedDroneIdx];
+
+  sessionStorage.setItem(
+    "assignedDrone",
+    JSON.stringify({
+      droneId:   selectedDrone.drone._id,
+      droneName: selectedDrone.drone.name,
+    })
+  );
+
+  navigate(`/requests/${id}`);
+};
 
   useEffect(() => { fetchIntel(); }, [id]);
 
