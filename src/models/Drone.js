@@ -5,7 +5,7 @@ const DroneSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     status: {
       type: String,
-      enum: ["idle", "in_mission", "maintenance", "disabled"],
+      enum: ["idle","assigned", "in_mission", "disabled"],
       default: "idle",
     },
 
@@ -38,7 +38,7 @@ disableReason: {
 
     type: {
       type: String,
-      enum: ["SAR", "delivery", "hybrid"],
+      enum: ["SAR", "logistics", "oilgas", "industrial", "security", "general"],
       default: "SAR",
     },
     lastEditedBy: {
@@ -49,8 +49,18 @@ disableReason: {
 lastEditedAt: {
   type: Date,
 },
+assignedMissionName: {
+  type: String,
+  default: "",
+},
+
+assignedAt: {
+  type: Date,
+  default: null,
+},
   },
   { timestamps: true }
+ 
 );
 
 
@@ -83,6 +93,9 @@ DroneSchema.methods.consumeBattery = function (amount) {
 // resets drone after mission is done
 DroneSchema.methods.completeMission = function () {
   this.status = "idle";
+  this.assignedMissionName = "";
+  this.assignedAt = null;
 };
+
 
 module.exports = mongoose.model("Drone", DroneSchema);

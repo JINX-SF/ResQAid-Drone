@@ -71,11 +71,17 @@ export default function EditDrone() {
         placeholder="Name"
       />
 
-      <input
-        value={form.type}
-        onChange={(e) => setForm({ ...form, type: e.target.value })}
-        placeholder="Type"
-      />
+      <select
+  value={form.type}
+  onChange={(e) => setForm({ ...form, type: e.target.value })}
+   >
+  <option value="SAR">Search & Rescue</option>
+  <option value="logistics">Remote Logistics</option>
+  <option value="oilgas">Oil & Gas Monitoring</option>
+  <option value="industrial">Industrial Inspection</option>
+  <option value="security">Security Patrol</option>
+  <option value="general">General </option>
+</select>
 
       <input
         value={form.status}

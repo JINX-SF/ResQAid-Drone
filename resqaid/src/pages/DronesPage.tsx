@@ -1,30 +1,23 @@
-import { MapPin, Trash2, Pencil, Package } from "lucide-react";
+import { MapPin, Trash2, Pencil, Gauge } from "lucide-react";
 import AppShell, { Glass } from "../components/AppShell";
 import DroneIcon from "@/components/DroneIcon";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API from "@/api";
 import { saveCache, loadCache } from "@/utils/offlineCache";
+import { Package, Shield, ShieldCheck, Wrench, Search } from "lucide-react";
+type Status = "in_mission" | "assigned" | "disabled"| "idle";
+type DType = "Search & rescue" | "Remote logistics" | "General" | "industrial inspection" |"oil & gas" | "Security Patrol";
 
-type Status = "in mission" | "active" | "offline" | "idle";
-
-type DType = "Search & rescue" | "Delivery";
 
 
 
 function StatusPill({ status }: { status: Status }) {
   const styles: Record<Status, string> = {
-    "in mission":
-      "bg-cyan-500/15 text-cyan-200 border border-cyan-400/30",
-
-    active:
-      "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30",
-
-    offline:
-      "bg-red-500/15 text-red-200 border border-red-400/30",
-
-    idle:
-      "bg-gray-500/15 text-gray-200 border border-gray-400/30",
+    "in_mission": "bg-blue-500/15 text-blue-300 border border-blue-400/30",    // blue
+"assigned":   "bg-yellow-500/15 text-yellow-300 border border-yellow-400/30", // yellow
+"disabled":   "bg-red-500/15 text-red-300 border border-red-400/30",
+"idle":         "bg-green-500/15 text-green-300 border border-green-400/30",  // green ✅
   };
 
   return (
@@ -49,15 +42,23 @@ function StatusPill({ status }: { status: Status }) {
 }
 
 function TypeCell({ type }: { type: DType }) {
-  if (type === "Delivery") {
-    return (
-      <div className="flex items-center gap-2">
-        <Package className="h-5 w-5 text-warning" />
-        <span>Delivery</span>
-      </div>
-    );
-  }
-  return <span>Search &amp; rescue</span>;
+  const config: Record<DType, { icon: React.ReactNode; label: string }> = {
+    "Search & rescue":       { icon: <Search   className="h-5 w-5 text-cyan-400" />,   label: "Search & rescue" },
+    "Remote logistics":      { icon: <Package  className="h-5 w-5 text-yellow-400" />, label: "Remote logistics" },
+    "General":               { icon: <ShieldCheck className="h-5 w-5 text-blue-400" />, label: "General" },
+    "industrial inspection": { icon: <Wrench   className="h-5 w-5 text-orange-400" />, label: "Industrial inspection" },
+    "oil & gas":             { icon: <Gauge  className="h-5 w-5 text-green-400" />, label: "Oil & Gas" },
+    "Security Patrol":       { icon: <Shield   className="h-5 w-5 text-red-400" />,    label: "Security Patrol" },
+  };
+
+  const { icon, label } = config[type] ?? { icon: null, label: type };
+
+  return (
+    <div className="flex items-center gap-2">
+      {icon}
+      <span>{label}</span>
+    </div>
+  );
 }
 export default function DronesPage() {
   const navigate = useNavigate();
@@ -338,8 +339,11 @@ const handleEdit = (drone: any) => {
     }
   >
     <option value="SAR">Search & Rescue</option>
-    <option value="delivery">Delivery</option>
-    <option value="hybrid">Hybrid</option>
+<option value="logistics">Remote Logistics</option>
+<option value="oilgas">Oil & Gas Monitoring</option>
+<option value="industrial">Industrial Inspection</option>
+<option value="security">Security Patrol</option>
+<option value="general">General </option>
   </select>
 </Field>
                  <Field label="Status" full>
@@ -352,7 +356,8 @@ const handleEdit = (drone: any) => {
   >
     <option value="idle">Available</option>
     <option value="in_mission">In Mission</option>
-    <option value="maintenance">Maintenance</option>
+    <option value="assigned">Assigned</option>
+    <option value="disabled">Disabled</option>
   </select>
 </Field>
                 </div>
@@ -604,7 +609,21 @@ const handleEdit = (drone: any) => {
     <StatusPill
       status={(d.status || "").toLowerCase() as Status}
     />
+    {d.status === "assigned" && d.assignedMissionName && (
+      <span className="text-xs text-yellow-300/80 mt-1">
+        📋 {d.assignedMissionName}
+      </span>
+    )}
+    {d.status === "assigned" && d.assignedAt && (
+      <span className="text-xs text-white/40">
+        {new Date(d.assignedAt).toLocaleDateString("en-GB", {
+          day: "2-digit", month: "short", year: "numeric",
+          hour: "2-digit", minute: "2-digit",
+        })}
+      </span>
+    )}
   </div>
+  
 
   {/* BATTERY */}
   <div className="font-medium text-white/80">
