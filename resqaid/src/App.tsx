@@ -18,7 +18,7 @@ import ConfirmationPage from "./pages/ConfirmationPage";
 import DronesPage from "./pages/DronesPage";
 import EmergencyRequestsPage from "./pages/EmergencyRequestsPage";
 import RequestPage from "./pages/RequestPage";
-import RequestAssistancePage from "@/pages/RequestAssistancePage"
+import RequestAssistancePage from "@/pages/RequestAssistancePage";
 import UsersPage from "./pages/UsersPage";
 import MissionsPage from "./pages/MissionsPage";
 import Forgot from "./pages/forgot";
@@ -31,9 +31,9 @@ import DisabledItemsPage from "./pages/DisabledItemsPage";
 import DroneHistory from "./pages/DroneHistory";
 import MissionHistory from "./pages/MissionHistory";
 import MissionIntelligencePage from "./pages/MissionIntelligencePage";
-
+import DisabledDronesPage from "./pages/DisabledDrones"; 
+import DisabledMissionsPage from "./pages/DisabledMissions"; 
 import Reset from "./pages/Reset";
-
 
 const queryClient = new QueryClient();
 
@@ -44,52 +44,52 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Public Routes */}
           <Route path="/" element={<Index />} />
           <Route path="/confirmatiopage" element={<ConfirmationPage />} />
           <Route path="/forgot" element={<Forgot />} />
           <Route path="/reset" element={<Reset />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/infos" element={<Infos />} />
+          <Route path="/oauth-success" element={<OAuthSuccess />} />
+          <Route path="/verify-email/:token" element={<VerifyEmail />} />
 
+          {/* Core App Routes */}
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:id" element={<Profile />} />
+          
           <Route path="/dronespage" element={<DronesPage />} />
           <Route path="/emergencyrequestspage" element={<EmergencyRequestsPage />} />
           <Route path="/requestpage" element={<RequestPage />} /> 
           <Route path="/request-assistance" element={<RequestAssistancePage />} />
-
-          <Route path="/userspage" element={<UsersPage />} />
-
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/infos" element={<Infos />} />
-          <Route path="/profile" element={<Profile />} />
           <Route path="/missionsPage" element={<MissionsPage />} />
-<Route
-  path="/missions/:id/history"
-  element={<MissionHistory />}
-/>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="*" element={<NotFound />} />
-          <Route path="/oauth-success" element={<OAuthSuccess />} />
+          <Route path="/missions/:id/history" element={<MissionHistory />} />
 
+          {/* Protected Routes */}
           <Route path="/controle" element={<ProtectedRoute><Controle /></ProtectedRoute> }/>
-          <Route path="/verify-email/:token" element={<VerifyEmail />} />
 
-          <Route path="/profile/:id" element={<Profile />} />
-
+          {/* Admin Routes */}
           <Route path="/userspage" element={ <AdminRoute> <UsersPage /> </AdminRoute> } />
           <Route path="/controle" element={ <AdminRoute> <Controle /> </AdminRoute> } />
           <Route path="/dronespage" element={ <AdminRoute> <DronesPage /> </AdminRoute> } />
           <Route path="/missionsPage" element={ <AdminRoute> <MissionsPage/> </AdminRoute> } />
-           <Route path="/drones/edit/:id" element={<EditDrone />} />
-           <Route path="/missions/edit/:id" element={<EditMission />} />
+          
+          <Route path="/drones/edit/:id" element={<EditDrone />} />
+          <Route path="/missions/edit/:id" element={<EditMission />} />
+          <Route path="/requests/:id" element={<RequestDetails />} />
+          <Route path="/requests/:id/intelligence" element={<MissionIntelligencePage />} />
+          <Route path="/my-requests" element={<MyRequestsPage />} />
+          <Route path="/disabled" element={<DisabledItemsPage />} />
+          <Route path="/drones/:id/history" element={<DroneHistory />} />
+          
+          {/* Your Disabled Sub-routes (Now Accessible!) */}
+          <Route path="/disabled/drones" element={<DisabledDronesPage />} />
+          <Route path="/disabled/missions" element={<DisabledMissionsPage />} />
 
-           <Route path="/requests/:id" element={<RequestDetails />} />
-           <Route path="/requests/:id/intelligence" element={<MissionIntelligencePage />} />
-           <Route path="/my-requests" element={<MyRequestsPage />} />
-           <Route path="/disabled" element={<DisabledItemsPage />} />
-
-           <Route path="/drones/:id/history" element={<DroneHistory />}
-/>
-
-
+          {/* CATCH-ALL NOT FOUND (Must always be last) */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

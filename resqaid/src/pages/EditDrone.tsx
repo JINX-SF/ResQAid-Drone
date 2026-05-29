@@ -75,12 +75,11 @@ export default function EditDrone() {
   value={form.type}
   onChange={(e) => setForm({ ...form, type: e.target.value })}
    >
-  <option value="SAR">Search & Rescue</option>
-  <option value="logistics">Remote Logistics</option>
-  <option value="oilgas">Oil & Gas Monitoring</option>
-  <option value="industrial">Industrial Inspection</option>
-  <option value="security">Security Patrol</option>
-  <option value="general">General </option>
+  <option value="camera_quadcopter">Camera Quadcopter — Surveillance & Mapping</option>
+  <option value="thermal_drone">Thermal Drone — Search & Rescue</option>
+  <option value="fixed_wing">Fixed-Wing Drone — Long-Range Patrol</option>
+  <option value="vtol_hybrid">VTOL Hybrid — Autonomous Logistics</option>
+  <option value="sensor_drone">Sensor Drone — Environmental Monitoring</option>
 </select>
 
       <input
