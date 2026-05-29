@@ -1,6 +1,3 @@
-import { useEffect, useState } from "react";
-import socket from "@/socket";
-
 const urgencyColor: Record<string, string> = {
   Critical: "text-red-400",
   High:     "text-orange-400",
@@ -8,64 +5,60 @@ const urgencyColor: Record<string, string> = {
   Low:      "text-green-400",
 };
 
-const MissionInfo = () => {
-  const [mission, setMission] = useState({
-    missionId:  "—",
-    title:      "No active mission",
-    type:       "—",
-    urgency:    "—",
-    status:     "pending",
-    droneName:  "—",
-    startedAt:  "—",
-    targetLat:  0,
-    targetLng:  0,
-  });
+interface Props {
+  selectedMission: any | null;
+}
 
-  useEffect(() => {
-    // fires when mission is assigned or completed
-    socket.on("missionUpdated", (data) => {
-      setMission((prev) => ({
-        ...prev,
-        missionId:  data.missionId   || prev.missionId,
-        title:      data.title       || prev.title,
-        type:       data.type        || prev.type,
-        urgency:    data.urgency     || prev.urgency,
-        status:     data.status,
-        droneName:  data.droneName   || prev.droneName,
-        startedAt:  data.startedAt
-          ? new Date(data.startedAt).toLocaleTimeString()
-          : prev.startedAt,
-        targetLat:  data.targetArea?.lat ?? prev.targetLat,
-        targetLng:  data.targetArea?.lng ?? prev.targetLng,
-      }));
-    });
+const MissionInfo = ({ selectedMission }: Props) => {
+  const m = selectedMission;
 
-    return () => {
-      socket.off("missionUpdated");
-    };
-  }, []);
+  if (!m) {
+    return (
+      <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4 space-y-3">
+        <h3 className="font-semibold text-white text-sm">Mission Information</h3>
+        <p className="text-xs text-white/40 italic">No active mission</p>
+        <div className="space-y-2">
+          {["Type", "Status", "ID", "Started", "Location", "Drone", "Urgency"].map((label) => (
+            <div key={label} className="flex justify-between items-start gap-4">
+              <span className="text-muted-foreground text-xs">{label}</span>
+              <span className="text-xs font-medium text-white/30">—</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  const rows = [
-    ["Type",     mission.type],
-    ["Status",   mission.status.toUpperCase()],
-    ["ID",       mission.missionId.slice(-6)],
-    ["Started",  mission.startedAt],
-    ["Location", `${mission.targetLat.toFixed(3)}, ${mission.targetLng.toFixed(3)}`],
-    ["Drone",    mission.droneName],
-    ["Urgency",  mission.urgency],
+  const targetLat = m.targetArea?.lat ?? 0;
+  const targetLng = m.targetArea?.lng ?? 0;
+  const startedAt = m.startedAt
+    ? new Date(m.startedAt).toLocaleTimeString()
+    : "—";
+  const droneName = m.drone?.name || "—";
+  const status = m.status || "pending";
+  const urgency = m.urgency || "—";
+
+  const rows: [string, string][] = [
+    ["Type",     m.type     || "—"],
+    ["Status",   status.toUpperCase()],
+    ["ID",       m._id ? m._id.slice(-6) : "—"],
+    ["Started",  startedAt],
+    ["Location", `${targetLat.toFixed(3)}, ${targetLng.toFixed(3)}`],
+    ["Drone",    droneName],
+    ["Urgency",  urgency],
   ];
 
   return (
     <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4 space-y-3">
       <h3 className="font-semibold text-white text-sm">Mission Information</h3>
-      <p className="text-xs text-white/70 font-medium truncate">{mission.title}</p>
+      <p className="text-xs text-white/70 font-medium truncate">{m.title || "—"}</p>
       <div className="space-y-2">
         {rows.map(([label, value]) => (
           <div key={label} className="flex justify-between items-start gap-4">
             <span className="text-muted-foreground text-xs">{label}</span>
             <span className={`text-xs font-medium text-right ${
               label === "Status"
-                ? mission.status === "active" ? "text-green-400" : mission.status === "completed" ? "text-blue-400" : "text-gray-400"
+                ? status === "active" ? "text-green-400" : status === "completed" ? "text-blue-400" : "text-gray-400"
                 : label === "Urgency"
                 ? urgencyColor[value] || "text-white"
                 : "text-white"

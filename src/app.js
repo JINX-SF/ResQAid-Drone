@@ -24,6 +24,10 @@ app.use("/api/missions", missionRoutes);
 app.use("/api/drones", droneRoutes);
 app.use("/api/emergency-requests", emergencyRequestRoutes);
 
+const weatherRoutes = require("./routes/weatherRoutes");
+
+app.use("/api/weather", weatherRoutes);
+
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(

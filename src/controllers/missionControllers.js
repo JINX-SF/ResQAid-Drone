@@ -12,6 +12,7 @@ const allowedNext = {
 
 exports.createMission = async (req, res, next) => {
   try {
+    console.log("MISSION STATUS RECEIVED:", req.body.status);
     const mission = await Mission.create(req.body);
 
     // If the user already picked a drone (from Mission Intelligence),
@@ -31,29 +32,44 @@ exports.createMission = async (req, res, next) => {
         console.log(`🚁 Drone ${pickedDrone.name} assigned to mission (user picked)`);
       }
     } else {
-      // No drone picked — auto-assign the best available one
-      // Only pick drones that are idle (not assigned or in_mission)
-      const bestDrone = await Drone.findOne({
-        status: "idle",
-        battery: { $gte: 40 },
-        isDisabled: { $ne: true },
-      }).sort({ battery: -1 });
+  // Auto assign ONLY if mission is assigned or in_progress
+  if (
+    mission.status === "assigned" ||
+    mission.status === "in_progress" ||
+    mission.status === "active"
+  ) {
+    const bestDrone = await Drone.findOne({
+      status: "idle",
+      battery: { $gte: 40 },
+      isDisabled: { $ne: true },
+    }).sort({ battery: -1 });
 
-      if (bestDrone) {
-        mission.drone = bestDrone._id;
-        mission.status = "assigned";
-        await mission.save();
+    if (bestDrone) {
+      mission.drone = bestDrone._id;
+      await mission.save();
 
-        bestDrone.status = "assigned";
-        bestDrone.assignedMissionName = mission.title;
-        bestDrone.assignedAt = new Date();
-        await bestDrone.save();
+      bestDrone.status =
+        mission.status === "in_progress"
+          ? "in_mission"
+          : "assigned";
 
-        console.log(`🚁 Drone ${bestDrone.name} auto assigned to mission`);
-      } else {
-        console.log("❌ No available drone found");
-      }
+      bestDrone.assignedMissionName = mission.title;
+      bestDrone.assignedAt = new Date();
+
+      await bestDrone.save();
+
+      console.log(
+        `🚁 Drone ${bestDrone.name} auto assigned to mission`
+      );
+    } else {
+      console.log("❌ No available drone found");
     }
+  } else {
+    console.log(
+      "📝 Pending mission created without drone assignment"
+    );
+  }
+}
 
     const populated = await Mission.findById(mission._id).populate("drone");
     res.status(201).json({ success: true, data: populated });
@@ -235,14 +251,62 @@ exports.updateMission = async (req, res, next) => {
     req.body.lastEditedAt = new Date();
 
     const oldMission = await Mission.findById(req.params.id);
-    if (!oldMission) return res.status(404).json({ success: false, message: "Mission not found" });
+    if (!oldMission) {
+      return res.status(404).json({ success: false, message: "Mission not found" });
+    }
 
     const oldData = oldMission.toObject();
 
-    const updatedMission = await Mission.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const mission = await Mission.findById(req.params.id);
+    Object.assign(mission, req.body);
+
+    const needsDrone =
+      (mission.status === "assigned" || mission.status === "active") &&
+      !mission.drone;
+
+    if (needsDrone) {
+      const bestDrone = await Drone.findOne({
+        status: "idle",
+        battery: { $gte: 40 },
+        isDisabled: { $ne: true },
+      }).sort({ battery: -1 });
+
+      if (bestDrone) {
+        mission.drone = bestDrone._id;
+
+        bestDrone.status = mission.status === "active" ? "in_mission" : "assigned";
+        bestDrone.assignedMissionName = mission.title;
+        bestDrone.assignedAt = new Date();
+
+        await bestDrone.save();
+      }
+    }
+
+    if (mission.drone && mission.status === "active") {
+      await Drone.findByIdAndUpdate(mission.drone, {
+        status: "in_mission",
+        assignedMissionName: mission.title,
+        assignedAt: new Date(),
+      });
+    }
+
+    if (mission.drone && mission.status === "assigned") {
+      await Drone.findByIdAndUpdate(mission.drone, {
+        status: "assigned",
+        assignedMissionName: mission.title,
+        assignedAt: new Date(),
+      });
+    }
+
+    if (mission.status === "completed" && mission.drone) {
+      await Drone.findByIdAndUpdate(mission.drone, {
+        status: "idle",
+        assignedMissionName: "",
+        assignedAt: null,
+      });
+    }
+
+    await mission.save();
 
     const changes = [];
     Object.keys(req.body).forEach((key) => {
@@ -254,16 +318,18 @@ exports.updateMission = async (req, res, next) => {
     });
 
     await MissionHistory.create({
-      missionId: updatedMission._id,
+      missionId: mission._id,
       editedBy: req.user?._id,
       editorName: req.user?.name || "Unknown User",
       action: "updated",
       changes,
       previousData: oldData,
-      updatedData: updatedMission,
+      updatedData: mission,
     });
 
-    res.json({ success: true, data: updatedMission });
+    const populated = await Mission.findById(mission._id).populate("drone");
+
+    res.json({ success: true, data: populated });
   } catch (err) {
     next(err);
   }

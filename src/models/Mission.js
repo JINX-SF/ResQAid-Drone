@@ -13,6 +13,7 @@ const MissionSchema = new mongoose.Schema(
   status: {
   type: String,
   enum: [
+    "pending",
     "assigned",
     "active",
     "completed",

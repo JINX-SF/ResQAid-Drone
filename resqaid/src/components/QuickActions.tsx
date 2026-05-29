@@ -1,12 +1,17 @@
 import { useState } from "react";
 import API from "../api";
 
-const QuickActions = () => {
-  const [droneId, setDroneId] = useState("");
+interface Props {
+  selectedMission: any;
+}
+
+const QuickActions = ({ selectedMission }: Props) => {
+  const droneId = selectedMission?.drone?._id || "";
   const [lat, setLat]         = useState("");
   const [lng, setLng]         = useState("");
   const [msg, setMsg]         = useState("");
   const [loading, setLoading] = useState(false);
+
 
   const send = async (action: string) => {
     if (!droneId.trim()) return setMsg("⚠️ Enter a drone ID first");
@@ -41,12 +46,7 @@ const QuickActions = () => {
     <div className="rounded-xl backdrop-blur-md border border-white/10 bg-black/20 p-4 space-y-3">
       <h3 className="font-semibold text-white text-sm">Quick Actions</h3>
 
-      <input
-        className="w-full bg-white/10 text-white text-xs rounded px-2 py-1.5 placeholder-white/30 border border-white/10 outline-none focus:border-white/30"
-        placeholder="Drone ID (from database)"
-        value={droneId}
-        onChange={(e) => setDroneId(e.target.value)}
-      />
+    
 
       <div className="flex gap-2">
         <input

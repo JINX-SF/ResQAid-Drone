@@ -1,10 +1,10 @@
 import { Users, Flame, Thermometer, Activity } from "lucide-react";
 
 const detections = [
-  { icon: Users, label: "human detection", value: "2", color: "text-green-300" },
-  { icon: Flame, label: "heat signature", value: "3", color: "text-orange-400" },
-  { icon: Thermometer, label: "max temperature", value: "250C", color: "text-red-600" },
-  { icon: Activity, label: "movement", value: "Low", color: "text-muted-foreground" },
+  { icon: Users, label: "human detection", value: "0", color: "text-green-300" },
+  { icon: Flame, label: "heat signature", value: "0", color: "text-orange-400" },
+  { icon: Thermometer, label: "max temperature", value: "0C", color: "text-red-600" },
+  { icon: Activity, label: "movement", value: "Unknown", color: "text-muted-foreground" },
 ];
 
 const Detection = () => (

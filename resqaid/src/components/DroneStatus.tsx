@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import { Battery, Wind, Eye, Thermometer } from "lucide-react";
 import socket from "@/socket";
+import API from "@/api";
 
-const DroneStatus = () => {
+interface Props {
+  selectedMission: any | null;
+}
+
+const DroneStatus = ({ selectedMission }: Props) => {
   const [name, setName]         = useState("No drone active");
   const [status, setStatus]     = useState("idle");
   const [battery, setBattery]   = useState(100);
@@ -11,31 +16,76 @@ const DroneStatus = () => {
   const [altitude, setAltitude] = useState(0);
   const [heading, setHeading]   = useState(0);
 
-  const [wind, setWind]         = useState(0);
-  const [temp, setTemp]         = useState(20);
-  const [vis, setVis]           = useState(10);
+  const [wind, setWind]           = useState(0);
+  const [temp, setTemp]           = useState(20);
+  const [vis, setVis]             = useState(10);
   const [condition, setCondition] = useState("Clear");
-  const [flyable, setFlyable]   = useState(true);
+  const [flyable, setFlyable]     = useState(true);
+  const [weatherLoading, setWeatherLoading] = useState(false);
 
+  // ── When selected mission changes, pull fresh drone info & weather ──────
   useEffect(() => {
-    // battery bar — fires every 1 second during mission
+    const drone = selectedMission?.drone;
+    if (!drone) {
+      setName("No drone active");
+      setStatus("idle");
+      setBattery(100);
+      setDraining(false);
+      setSpeed(0);
+      setAltitude(0);
+      setHeading(0);
+      return;
+    }
+
+    // Set drone info directly from the populated mission object
+    setName(drone.name || "Unknown");
+    setStatus(drone.status || "idle");
+    setBattery(drone.battery ?? 100);
+    setSpeed(0);       // real-time speed comes via socket
+    setAltitude(0);
+    setHeading(0);
+    setDraining(false);
+
+    // Fetch weather for the mission's target area
+    const lat = selectedMission.targetArea?.lat;
+const lng = selectedMission.targetArea?.lng;
+
+if (lat !== undefined && lng !== undefined) {
+      setWeatherLoading(true);
+      API.get(`/weather?lat=${lat}&lng=${lng}`)
+        .then((res) => {
+          const w = res.data;
+          setWind(w.windSpeed   ?? 0);
+          setTemp(w.temperature ?? 20);
+          setVis(w.visibility   ?? 10);
+          setCondition(w.condition ?? "Clear");
+          setFlyable(w.isFlyable  ?? true);
+        })
+        
+        .catch((err) => {
+          console.warn("Weather fetch failed:", err);
+        })
+        .finally(() => setWeatherLoading(false));
+    }
+  }, [selectedMission]);
+
+  // ── Real-time socket updates (flight telemetry) ─────────────────────────
+  useEffect(() => {
     socket.on("batteryUpdate", (data) => {
-      setName(data.name);
       setBattery(data.battery);
       setDraining(data.draining);
+      if (data.name) setName(data.name);
     });
 
-    // speed, altitude, heading — fires every 1 second during mission
     socket.on("dronePosition", (data) => {
-      setName(data.name);
       setSpeed(data.speed);
       setAltitude(data.altitude);
       setHeading(data.heading);
+      if (data.name) setName(data.name);
     });
 
-    // drone status changed (idle, in_mission, maintenance)
     socket.on("droneUpdated", (data) => {
-      setName(data.name);
+      if (data.name) setName(data.name);
       setStatus(data.status);
       setBattery(data.battery);
       if (data.status !== "in_mission") {
@@ -45,7 +95,6 @@ const DroneStatus = () => {
       }
     });
 
-    // weather data — fires before each mission
     socket.on("weatherUpdate", (data) => {
       setWind(data.windSpeed);
       setTemp(data.temperature);
@@ -88,7 +137,7 @@ const DroneStatus = () => {
         </div>
       </div>
 
-      {/* battery bar — animates every second */}
+      {/* battery bar */}
       <div>
         <div className="flex justify-between items-center mb-1">
           <span className="text-muted-foreground text-xs flex items-center gap-1">
@@ -104,7 +153,7 @@ const DroneStatus = () => {
         </div>
       </div>
 
-      {/* flight data */}
+      {/* flight data — real-time from simulation */}
       <div className="space-y-1.5">
         {[
           ["Speed",    `${speed} km/h`],
@@ -120,7 +169,9 @@ const DroneStatus = () => {
 
       {/* weather */}
       <div className="border-t border-white/10 pt-2">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Weather</p>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+          Weather {weatherLoading && <span className="text-yellow-400/70">· loading…</span>}
+        </p>
         <div className="grid grid-cols-2 gap-1 text-xs">
           <span className="text-white flex items-center gap-1"><Wind size={10} className="text-blue-400" /> {wind} km/h</span>
           <span className="text-white flex items-center gap-1"><Thermometer size={10} className="text-orange-400" /> {temp}°C</span>
@@ -129,6 +180,9 @@ const DroneStatus = () => {
             {flyable ? "✓ Flyable" : "✗ Unsafe"}
           </span>
         </div>
+        {condition !== "Clear" && (
+          <p className="text-[10px] text-white/50 mt-1">{condition}</p>
+        )}
       </div>
     </div>
   );

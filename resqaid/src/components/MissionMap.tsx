@@ -20,17 +20,32 @@ interface Target {
 const MissionMap = () => {
   const [dronePos, setDronePos] = useState<DronePos | null>(null);
   const [target, setTarget]     = useState<Target | null>(null);
+  const [route, setRoute] = useState<LatLng[]>([]);
 
   useEffect(() => {
-    socket.on("dronePosition", (data) => setDronePos(data));
-    socket.on("missionUpdated", (data) => {
-      if (data.targetArea) setTarget(data.targetArea);
-    });
-    return () => {
-      socket.off("dronePosition");
-      socket.off("missionUpdated");
-    };
-  }, []);
+  socket.on("dronePosition", (data) => {
+    setDronePos(data);
+
+    setRoute((prev) => [
+      ...prev,
+      {
+        lat: data.lat,
+        lng: data.lng,
+      },
+    ]);
+  });
+
+  socket.on("missionUpdated", (data) => {
+    if (data.targetArea) {
+      setTarget(data.targetArea);
+    }
+  });
+
+  return () => {
+    socket.off("dronePosition");
+    socket.off("missionUpdated");
+  };
+}, []);
 
   const dronePin: LatLng | null = dronePos
     ? { lat: dronePos.lat, lng: dronePos.lng }

@@ -184,7 +184,7 @@ export default function MissionsPage() {
   const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
-    title: "", type: "SAR", status: "assigned", payloadWeight: 0,
+    title: "", type: "SAR", status: "pending", payloadWeight: 0,
     urgency: "Low", startTime: "", locationName: "", lat: 0, lng: 0,
     targetArea: "", targetLat: 0, targetLng: 0, droneId: "", description: "",
   });
@@ -288,7 +288,7 @@ export default function MissionsPage() {
       if (Number(form.lng) < -180 || Number(form.lng) > 180) { alert("Longitude must be between -180 and 180"); return; }
 
       const missionData = {
-        title: form.title || form.type, type: form.type, status: "assigned",
+        title: form.title || form.type, type: form.type, status: form.status,
         payloadWeight: Number(form.payloadWeight), urgency: form.urgency,
         startTime: form.startTime, description: form.description,
         drone: form.droneId || undefined,
@@ -350,7 +350,7 @@ export default function MissionsPage() {
   };
 
   const resetForm = () => setForm({
-    title: "", type: "SAR", status: "assigned", payloadWeight: 0, urgency: "Low",
+    title: "", type: "SAR", status: "pending", payloadWeight: 0, urgency: "Low",
     startTime: "", locationName: "", lat: 0, lng: 0, targetArea: "", targetLat: 0,
     targetLng: 0, droneId: "", description: "",
   });

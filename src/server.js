@@ -37,9 +37,9 @@ async function start() {
       console.log(`✅ Server running on port ${PORT}`);
     });
 
-    setInterval(() => {
+   /* setInterval(() => {
       runSimulation(io);
-    }, 10000);
+    }, 10000);*/
 
     // Runs every minute — promotes assigned missions to active when startTime arrives
     // FIX: Mission status enum is "active" not "in_mission" ("in_mission" is only for Drone)
