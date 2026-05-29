@@ -4,7 +4,7 @@ import AppShell from "@/components/AppShell";
 
 import { useEffect, useState } from "react";
 import API from "@/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import { saveCache, loadCache } from "@/utils/offlineCache";
 
@@ -16,23 +16,25 @@ import {
 } from "@/utils/offlineMissions";
 
 type Status = "completed" | "assigned" | "pending" | "active";
-type Urgency = "critical" | "minor" | "low";
-type MType = "Search & rescue" | "Delivery";
+type MType = "SAR" |  "logistics" | "oilgas" | "industrial" | "security";
 
 type Mission = {
   _id: string;
+  title?: string;
   type: string;
-  status: "completed" | "assigned" | "pending" | "active";
+  status: Status;
   payloadWeight: number;
-  urgency: "critical" | "minor" | "low";
+  urgency: string;
   startTime: string;
-
+  drone?: any;
+  description?: string;
   departureLocation?: {
+    name?: string;
     lat: number;
     lng: number;
   };
-
   targetArea?: {
+    name?: string;
     lat: number;
     lng: number;
   };
@@ -49,9 +51,7 @@ function StatusPill({ status }: { status: Status }) {
   };
 
   return (
-    <span
-      className={`inline-flex w-fit items-center rounded-xl px-4 py-2 text-sm font-bold uppercase tracking-wide backdrop-blur-md ${styles[status]}`}
-    >
+    <span className={`inline-flex w-fit items-center rounded-xl px-4 py-2 text-sm font-bold uppercase tracking-wide backdrop-blur-md ${styles[status] || styles.pending}`}>
       {status}
     </span>
   );
@@ -61,41 +61,35 @@ function UrgencyPill({ urgency }: { urgency: string }) {
   const key = (urgency || "").toLowerCase();
 
   const styles: any = {
-    low: {
-      cls: "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30",
-    },
-    medium: {
-      cls: "bg-yellow-500/15 text-yellow-100 border border-yellow-400/30",
-    },
-    high: {
-      cls: "bg-orange-500/15 text-orange-100 border border-orange-400/30",
-    },
-    critical: {
-      cls: "bg-red-500/15 text-red-100 border border-red-400/30",
-    },
+    low: "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30",
+    medium: "bg-yellow-500/15 text-yellow-100 border border-yellow-400/30",
+    high: "bg-orange-500/15 text-orange-100 border border-orange-400/30",
+    critical: "bg-red-500/15 text-red-100 border border-red-400/30",
   };
 
-  const style = styles[key] || styles.low;
-
   return (
-    <span
-      className={`inline-flex w-fit items-center rounded-xl px-4 py-2 text-sm font-bold uppercase tracking-wide backdrop-blur-md ${style.cls}`}
-    >
+    <span className={`inline-flex w-fit items-center rounded-xl px-4 py-2 text-sm font-bold uppercase tracking-wide backdrop-blur-md ${styles[key] || styles.low}`}>
       {urgency}
     </span>
   );
 }
 
-function TypeCell({ type }: { type: MType }) {
-  if (type === "Delivery") {
+function TypeCell({ type }: { type: string }) {
+  if (type === "logistics" || type === "logistics") {
     return (
       <div className="flex items-center gap-2">
         <Package className="h-5 w-5 text-warning" />
-        <span>Delivery</span>
+        <span>{type === "logistics" ? "Remote Logistics" : "logistics"}</span>
       </div>
     );
   }
-  return <span>Search &amp; rescue</span>;
+
+  if (type === "SAR") return <span>Search &amp; rescue</span>;
+  if (type === "oilgas") return <span>Oil &amp; Gas Monitoring</span>;
+  if (type === "industrial") return <span>Industrial Inspection</span>;
+  if (type === "security") return <span>Security Patrol</span>;
+
+  return <span>{type}</span>;
 }
 
 const inputCls =
@@ -121,14 +115,16 @@ function Field({
 }
 
 export default function MissionsPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [open, setOpen] = useState(false);
+
   const [showDisableModal, setShowDisableModal] = useState(false);
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [disableReason, setDisableReason] = useState("");
   const [otherReason, setOtherReason] = useState("");
-
-  const navigate = useNavigate();
-  const [missions, setMissions] = useState<any[]>([]);
-  const [open, setOpen] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
@@ -136,7 +132,7 @@ export default function MissionsPage() {
   const [form, setForm] = useState({
     title: "",
     type: "SAR",
-    status: "pending",
+    status: "assigned",
     payloadWeight: 0,
     urgency: "Low",
     startTime: "",
@@ -146,9 +142,10 @@ export default function MissionsPage() {
     targetArea: "",
     targetLat: 0,
     targetLng: 0,
+    droneId: "",
+    description: "",
   });
 
-  // Helper fetch function to reuse across updates/mounts
   const fetchMissions = async () => {
     try {
       const res = await API.get("/missions");
@@ -158,22 +155,67 @@ export default function MissionsPage() {
     } catch (err) {
       console.error("Online missions fetch failed:", err);
       const cached = loadCache("missions_cache");
-      if (cached?.data) {
-        setMissions(cached.data);
-      }
+      if (cached?.data) setMissions(cached.data);
     }
   };
 
-  // 1. Core Initial Data Fetch Hook
   useEffect(() => {
     fetchMissions();
   }, []);
 
-  // 2. FIXED: Extracted Background Queue Synchronization Hook out of the click function
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const requestId = params.get("requestId");
+    const droneId = params.get("droneId");
+
+    if (!requestId) return;
+
+    const token = localStorage.getItem("token");
+
+    fetch(`http://localhost:5000/api/emergency-requests/${requestId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const req = data.data ?? data;
+
+        setForm((prev) => ({
+          ...prev,
+          type: req.type || prev.type,
+          urgency: req.urgency || prev.urgency,
+          description: req.description || "",
+          locationName: req.fromLocation?.name || req.location?.name || "",
+          lat: req.fromLocation?.lat || req.location?.lat || 0,
+          lng: req.fromLocation?.lng || req.location?.lng || 0,
+          targetArea: req.location?.name || "",
+          targetLat: req.location?.lat || 0,
+          targetLng: req.location?.lng || 0,
+          droneId: droneId || "",
+          status: "assigned",
+        }));
+
+        setOpen(true);
+      })
+      .catch((e) => console.error("Failed to prefill mission form:", e));
+  }, [location.search]);
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem("assignedDrone");
+
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setForm((prev) => ({
+        ...prev,
+        droneId: parsed.droneId || "",
+      }));
+    }
+  }, [open]);
+
   useEffect(() => {
     const runSync = async () => {
       try {
         const result = await syncPendingMissions();
+
         if (result && result.synced > 0) {
           alert(`🟢 ${result.synced} offline mission(s) synchronized`);
           fetchMissions();
@@ -184,6 +226,7 @@ export default function MissionsPage() {
     };
 
     runSync();
+
     const interval = setInterval(runSync, 30000);
     window.addEventListener("online", runSync);
 
@@ -193,20 +236,68 @@ export default function MissionsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const notifiedMissions = new Set<string>();
+
+    const checkStartTimes = () => {
+      const now = new Date();
+
+      missions.forEach((mission: any) => {
+        if (!mission.startTime) return;
+        if (!mission._id) return;
+        if (notifiedMissions.has(mission._id)) return;
+        if (mission.status !== "assigned") return;
+
+        const startTime = new Date(mission.startTime);
+        const diffMs = startTime.getTime() - now.getTime();
+        const diffMinutes = diffMs / 1000 / 60;
+
+        if (diffMinutes > 0 && diffMinutes <= 5) {
+          notifiedMissions.add(mission._id);
+
+          if (Notification.permission === "granted") {
+            new Notification("⚡ Mission Starting Soon", {
+              body: `"${mission.title || mission.type}" starts in ${Math.ceil(diffMinutes)} minute(s). Redirecting to Controle...`,
+              icon: "/favicon.ico",
+            });
+          } else {
+            alert(`⚡ Mission "${mission.title || mission.type}" starts in ${Math.ceil(diffMinutes)} minute(s)!`);
+          }
+
+          setTimeout(() => {
+            navigate(`/controle?missionId=${mission._id}`);
+          }, 3000);
+        }
+      });
+    };
+
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
+    const interval = setInterval(checkStartTimes, 30000);
+    checkStartTimes();
+
+    return () => clearInterval(interval);
+  }, [missions, navigate]);
+
   const handleAddMission = async () => {
     try {
       if (!form.locationName.trim()) {
         alert("Departure location is required");
         return;
       }
+
       if (!form.startTime) {
         alert("Mission start time is required");
         return;
       }
+
       if (Number(form.lat) < -90 || Number(form.lat) > 90) {
         alert("Latitude must be between -90 and 90");
         return;
       }
+
       if (Number(form.lng) < -180 || Number(form.lng) > 180) {
         alert("Longitude must be between -180 and 180");
         return;
@@ -215,15 +306,19 @@ export default function MissionsPage() {
       const missionData = {
         title: form.title || form.type,
         type: form.type,
-        status: form.status,
+        status: "assigned",
         payloadWeight: Number(form.payloadWeight),
         urgency: form.urgency,
         startTime: form.startTime,
+        description: form.description,
+        drone: form.droneId || undefined,
+
         departureLocation: {
           name: form.locationName,
           lat: Number(form.lat),
           lng: Number(form.lng),
         },
+
         targetArea: {
           name: form.targetArea,
           lat: Number(form.targetLat),
@@ -237,22 +332,43 @@ export default function MissionsPage() {
         await API.put(`/missions/${editingMissionId}`, missionData);
         alert("Mission updated ✅");
       } else {
-        // Save locally first to secure the persistence state
         const pendingMission = savePendingMission(missionData);
 
         try {
           updatePendingMissionStatus(pendingMission.localId, "syncing");
+
           await API.post("/missions", missionData);
+
           removePendingMission(pendingMission.localId);
+          sessionStorage.removeItem("assignedDrone");
+
+          if (form.droneId) {
+            const token = localStorage.getItem("token");
+
+            await fetch(`http://localhost:5000/api/drones/${form.droneId}`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                status: "assigned",
+                assignedMissionName: form.title || form.type,
+                assignedAt: new Date().toISOString(),
+              }),
+            });
+          }
+
           alert("🟢 Mission synchronized successfully");
         } catch (syncError) {
+          console.error(syncError);
           updatePendingMissionStatus(pendingMission.localId, "sync_failed");
           alert("🟡 Mission saved locally. Waiting for network...");
         }
       }
 
-      // Re-fetch all dynamic table views safely
       await fetchMissions();
+
       setOpen(false);
       setIsEditing(false);
       setEditingMissionId(null);
@@ -263,8 +379,7 @@ export default function MissionsPage() {
 
   const handleDisableMission = async () => {
     try {
-      const finalReason =
-        disableReason === "other" ? otherReason : disableReason;
+      const finalReason = disableReason === "other" ? otherReason : disableReason;
 
       await API.patch(`/missions/${selectedMission._id}/disable`, {
         reason: finalReason,
@@ -280,22 +395,14 @@ export default function MissionsPage() {
     }
   };
 
-  const disableMission = async (id: string) => {
-    try {
-      await API.patch(`/missions/${id}/disable`);
-      setMissions((prev: any) => prev.filter((m: any) => m._id !== id));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const handleEditMission = (mission: any) => {
     setIsEditing(true);
     setEditingMissionId(mission._id);
+
     setForm({
       title: mission.title || "",
       type: mission.type || "SAR",
-      status: mission.status || "pending",
+      status: mission.status || "assigned",
       payloadWeight: mission.payloadWeight || 0,
       urgency: mission.urgency || "Low",
       startTime: mission.startTime ? mission.startTime.slice(0, 16) : "",
@@ -305,13 +412,34 @@ export default function MissionsPage() {
       targetArea: mission.targetArea?.name || "",
       targetLat: mission.targetArea?.lat || 0,
       targetLng: mission.targetArea?.lng || 0,
+      droneId: mission.drone?._id || mission.drone || "",
+      description: mission.description || "",
     });
+
     setOpen(true);
+  };
+
+  const resetForm = () => {
+    setForm({
+      title: "",
+      type: "SAR",
+      status: "assigned",
+      payloadWeight: 0,
+      urgency: "Low",
+      startTime: "",
+      locationName: "",
+      lat: 0,
+      lng: 0,
+      targetArea: "",
+      targetLat: 0,
+      targetLng: 0,
+      droneId: "",
+      description: "",
+    });
   };
 
   return (
     <div>
-      {/* New / Edit Mission Modal */}
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md"
@@ -321,11 +449,11 @@ export default function MissionsPage() {
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-white/5 backdrop-blur-2xl shadow-2xl shadow-green-500/10 p-6 text-white"
           >
-            {/* Header */}
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-green-400 flex items-center gap-2">
                 <span>🎯</span> {isEditing ? "Edit Mission" : "New Mission"}
               </h2>
+
               <p className="text-sm text-white/60">
                 {isEditing
                   ? "Update this mission information and save the changes."
@@ -334,12 +462,14 @@ export default function MissionsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 1. Mission Info */}
               <section className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 md:col-span-2">
                 <h3 className="flex items-center gap-2 mb-4 font-semibold">
-                  <span className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-sm">1</span>
+                  <span className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-sm">
+                    1
+                  </span>
                   Mission Information
                 </h3>
+
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Mission Title" full>
                     <input
@@ -356,8 +486,11 @@ export default function MissionsPage() {
                       value={form.type}
                       onChange={(e) => setForm({ ...form, type: e.target.value })}
                     >
-                      <option value="SAR">Search & rescue</option>
-                      <option value="delivery">Delivery</option>
+                      <option value="SAR">Search & Rescue</option>
+                      <option value="logistics">Remote Logistics</option>
+                      <option value="oilgas">Oil & Gas Monitoring</option>
+                      <option value="industrial">Industrial Inspection</option>
+                      <option value="security">Security Patrol</option>
                     </select>
                   </Field>
 
@@ -365,7 +498,9 @@ export default function MissionsPage() {
                     <select
                       className={inputCls}
                       value={form.status}
-                      onChange={(e) => setForm({ ...form, status: e.target.value.toLowerCase() })}
+                      onChange={(e) =>
+                        setForm({ ...form, status: e.target.value.toLowerCase() })
+                      }
                     >
                       <option value="pending">Pending</option>
                       <option value="assigned">Assigned</option>
@@ -379,7 +514,9 @@ export default function MissionsPage() {
                       className={inputCls}
                       type="number"
                       value={form.payloadWeight}
-                      onChange={(e) => setForm({ ...form, payloadWeight: Number(e.target.value) })}
+                      onChange={(e) =>
+                        setForm({ ...form, payloadWeight: Number(e.target.value) })
+                      }
                     />
                   </Field>
 
@@ -404,82 +541,131 @@ export default function MissionsPage() {
                       onChange={(e) => setForm({ ...form, startTime: e.target.value })}
                     />
                   </Field>
+
+                  {form.droneId && (
+                    <Field label="Assigned Drone">
+                      <input
+                        className={inputCls}
+                        value={form.droneId}
+                        readOnly
+                        style={{ opacity: 0.6, cursor: "not-allowed" }}
+                      />
+
+                      <p className="text-xs text-yellow-400/80 mt-1">
+                        ⚡ Auto-assigned from Mission Intelligence
+                      </p>
+                    </Field>
+                  )}
+
+                  <Field label="Description" full>
+                    <textarea
+                      className={inputCls}
+                      rows={3}
+                      placeholder="Mission description..."
+                      value={form.description}
+                      onChange={(e) =>
+                        setForm({ ...form, description: e.target.value })
+                      }
+                    />
+                  </Field>
                 </div>
               </section>
 
-              {/* 2. Departure Location */}
               <section className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
                 <h3 className="flex items-center gap-2 mb-4 font-semibold">
-                  <span className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-sm">2</span>
+                  <span className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-sm">
+                    2
+                  </span>
                   Departure Location
                 </h3>
+
                 <div className="space-y-3">
                   <Field label="Location Name">
                     <input
                       className={inputCls}
                       placeholder="Base Alpha"
                       value={form.locationName}
-                      onChange={(e) => setForm({ ...form, locationName: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, locationName: e.target.value })
+                      }
                     />
                   </Field>
+
                   <Field label="Latitude">
                     <input
                       type="number"
                       className={inputCls}
                       placeholder="35.6971"
                       value={form.lat}
-                      onChange={(e) => setForm({ ...form, lat: Number(e.target.value) })}
+                      onChange={(e) =>
+                        setForm({ ...form, lat: Number(e.target.value) })
+                      }
                     />
                   </Field>
+
                   <Field label="Longitude">
                     <input
                       type="number"
                       className={inputCls}
                       placeholder="-0.6308"
                       value={form.lng}
-                      onChange={(e) => setForm({ ...form, lng: Number(e.target.value) })}
+                      onChange={(e) =>
+                        setForm({ ...form, lng: Number(e.target.value) })
+                      }
                     />
                   </Field>
                 </div>
               </section>
 
-              {/* 3. Target Area */}
               <section className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
                 <h3 className="flex items-center gap-2 mb-4 font-semibold">
-                  <span className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-sm">3</span>
+                  <span className="w-7 h-7 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-sm">
+                    3
+                  </span>
                   Target Area
                 </h3>
+
                 <div className="space-y-3">
                   <Field label="Target area name">
                     <input
                       className={inputCls}
                       placeholder="Sector 7"
                       value={form.targetArea}
-                      onChange={(e) => setForm({ ...form, targetArea: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, targetArea: e.target.value })
+                      }
                     />
                   </Field>
+
                   <Field label="Target latitude">
                     <input
                       type="number"
                       className={inputCls}
                       value={form.targetLat}
-                      onChange={(e) => setForm({ ...form, targetLat: Number(e.target.value) })}
+                      onChange={(e) =>
+                        setForm({ ...form, targetLat: Number(e.target.value) })
+                      }
                     />
                   </Field>
+
                   <Field label="Target longitude">
                     <input
                       type="number"
                       className={inputCls}
                       value={form.targetLng}
-                      onChange={(e) => setForm({ ...form, targetLng: Number(e.target.value) })}
+                      onChange={(e) =>
+                        setForm({ ...form, targetLng: Number(e.target.value) })
+                      }
                     />
                   </Field>
-                  <p className="text-xs text-green-400/80">Mission destination coordinates.</p>
+
+                  <p className="text-xs text-green-400/80">
+                    Mission destination coordinates.
+                  </p>
                 </div>
               </section>
             </div>
 
-            {/* Footer */}
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
               <button
                 onClick={() => setOpen(false)}
@@ -487,6 +673,7 @@ export default function MissionsPage() {
               >
                 ⊗ Cancel
               </button>
+
               <button
                 onClick={handleAddMission}
                 className="px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold shadow-lg shadow-green-500/30 transition"
@@ -502,24 +689,12 @@ export default function MissionsPage() {
         <Glass className="overflow-hidden">
           <div className="flex items-center justify-between bg-black/40 px-6 py-4">
             <h2 className="text-2xl font-semibold text-white/80">All missions</h2>
+
             <button
               onClick={() => {
                 setIsEditing(false);
                 setEditingMissionId(null);
-                setForm({
-                  title: "",
-                  type: "SAR",
-                  status: "pending",
-                  payloadWeight: 0,
-                  urgency: "Low",
-                  startTime: "",
-                  locationName: "",
-                  lat: 0,
-                  lng: 0,
-                  targetArea: "",
-                  targetLat: 0,
-                  targetLng: 0,
-                });
+                resetForm();
                 setOpen(true);
               }}
               className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-emerald-400"
@@ -546,20 +721,43 @@ export default function MissionsPage() {
                 key={m._id}
                 className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 px-8 py-5 border-b border-white/5 hover:bg-white/[0.03] transition-all"
               >
-                <div className="font-medium text-white/80">{m._id?.slice(-5) || "N/A"}</div>
-                <div className="font-medium text-white/90">{m.type}</div>
-                <div className="font-medium text-white/90"><StatusPill status={m.status} /></div>
-                <div className="font-medium text-white/85">{m.payloadWeight} kg</div>
-                <div className="font-medium text-white/80"><UrgencyPill urgency={m.urgency} /></div>
                 <div className="font-medium text-white/80">
-                  {m.startedAt
+                  {m._id?.slice(-5) || "N/A"}
+                </div>
+
+                <div className="font-medium text-white/90">
+                  <TypeCell type={m.type} />
+                </div>
+
+                <div className="font-medium text-white/90">
+                  <StatusPill status={m.status} />
+                </div>
+
+                <div className="font-medium text-white/85">
+                  {m.payloadWeight} kg
+                </div>
+
+                <div className="font-medium text-white/80">
+                  <UrgencyPill urgency={m.urgency} />
+                </div>
+
+                <div className="font-medium text-white/80">
+                  {m.startTime
+                    ? new Date(m.startTime).toLocaleString()
+                    : m.startedAt
                     ? new Date(m.startedAt).toLocaleString()
                     : m.createdAt
-                      ? new Date(m.createdAt).toLocaleString()
-                      : "—"}
+                    ? new Date(m.createdAt).toLocaleString()
+                    : "—"}
                 </div>
-                <div className="font-medium text-white/80">📍 {m.departureLocation?.lat || 0}, {m.departureLocation?.lng || 0}</div>
-                <div className="font-medium text-white/80">🎯 {m.targetArea?.lat || 0}, {m.targetArea?.lng || 0}</div>
+
+                <div className="font-medium text-white/80">
+                  📍 {m.departureLocation?.lat || 0}, {m.departureLocation?.lng || 0}
+                </div>
+
+                <div className="font-medium text-white/80">
+                  🎯 {m.targetArea?.lat || 0}, {m.targetArea?.lng || 0}
+                </div>
 
                 <div className="flex items-center justify-end gap-2">
                   <button
@@ -568,12 +766,14 @@ export default function MissionsPage() {
                   >
                     Edit
                   </button>
+
                   <button
                     onClick={() => navigate(`/missions/${m._id}/history`)}
                     className="rounded-xl bg-blue-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-blue-400 active:scale-95"
                   >
                     History
                   </button>
+
                   <button
                     onClick={() => {
                       setSelectedMission(m);
@@ -589,70 +789,44 @@ export default function MissionsPage() {
           </ul>
         </Glass>
 
-        {/* REDESIGNED PROFESSIONAL BLUE/GREY DISABLE MODAL */}
         {showDisableModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md">
             <div className="w-full max-w-md rounded-2xl border border-slate-700/50 bg-slate-900/95 p-6 shadow-2xl shadow-black/50 transition-all duration-200 text-white">
-              
               <div className="mb-5">
                 <h2 className="text-xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
                   <span className="text-rose-500">🛑</span> Disable Mission
                 </h2>
+
                 <p className="text-xs text-slate-400 mt-1">
-                  Please select a dynamic reason below to halt this automated deployment status safely.
+                  Please select a reason below to halt this mission safely.
                 </p>
               </div>
 
               <div className="space-y-2.5">
-                <button
-                  onClick={() => setDisableReason("weather_conditions")}
-                  className={`w-full rounded-xl p-3.5 text-sm font-medium text-left border transition-all duration-200 ${
-                    disableReason === "weather_conditions"
-                      ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20"
-                      : "bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
-                  }`}
-                >
-                  ⛅ Weather conditions
-                </button>
-
-                <button
-                  onClick={() => setDisableReason("drone_malfunction")}
-                  className={`w-full rounded-xl p-3.5 text-sm font-medium text-left border transition-all duration-200 ${
-                    disableReason === "drone_malfunction"
-                      ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20"
-                      : "bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
-                  }`}
-                >
-                  🤖 Drone malfunction
-                </button>
-
-                <button
-                  onClick={() => setDisableReason("low_battery")}
-                  className={`w-full rounded-xl p-3.5 text-sm font-medium text-left border transition-all duration-200 ${
-                    disableReason === "low_battery"
-                      ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20"
-                      : "bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
-                  }`}
-                >
-                  🔋 Low battery
-                </button>
-
-                <button
-                  onClick={() => setDisableReason("other")}
-                  className={`w-full rounded-xl p-3.5 text-sm font-medium text-left border transition-all duration-200 ${
-                    disableReason === "other"
-                      ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20"
-                      : "bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
-                  }`}
-                >
-                  ✏️ Other reason
-                </button>
+                {[
+                  ["weather_conditions", "⛅ Weather conditions"],
+                  ["drone_malfunction", "🤖 Drone malfunction"],
+                  ["low_battery", "🔋 Low battery"],
+                  ["other", "✏️ Other reason"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    onClick={() => setDisableReason(value)}
+                    className={`w-full rounded-xl p-3.5 text-sm font-medium text-left border transition-all duration-200 ${
+                      disableReason === value
+                        ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20"
+                        : "bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
 
                 {disableReason === "other" && (
                   <textarea
                     value={otherReason}
                     onChange={(e) => setOtherReason(e.target.value)}
-                    placeholder="Provide continuous logging or operational context details..."
+                    placeholder="Provide operational context..."
                     className="w-full rounded-xl bg-slate-950/50 border border-slate-700 p-3 text-sm text-slate-200 outline-none focus:border-blue-500 transition-all placeholder:text-slate-500 min-h-[80px]"
                   />
                 )}
@@ -674,7 +848,6 @@ export default function MissionsPage() {
                   Confirm Disable
                 </button>
               </div>
-
             </div>
           </div>
         )}

@@ -774,12 +774,21 @@ export default function RequestPreviewPage() {
                   </button>
 
                   <button
-                    onClick={() => updateStatus("accepted")}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3 font-bold text-white hover:bg-green-700"
-                  >
-                    <CheckCircle className="h-5 w-5" />
-                    Accept Request
-                  </button>
+  onClick={() => { updateStatus("accepted");
+    // Read the drone that was selected in MissionIntelligencePage
+    const saved = sessionStorage.getItem("assignedDrone");
+    const droneId = saved ? JSON.parse(saved).droneId : "";
+
+    // Navigate to MissionsPage — pass requestId and droneId as query params
+    navigate(
+      `/missionsPage?requestId=${request._id}&droneId=${droneId}`
+    );
+  }}
+  className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3 font-bold text-white hover:bg-green-700"
+>
+  <CheckCircle className="h-5 w-5" />
+  Accept & Create Mission
+</button>
 
                   <button
                     onClick={() => updateStatus("rejected")}

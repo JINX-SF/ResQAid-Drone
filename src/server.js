@@ -1,56 +1,4 @@
-/*const { verifyEmailConfig } = require("./services/emailService");
-
 require("dotenv").config();
-
-
-const http = require("http");
-const { Server } = require("socket.io");
-
-
-const app = require("./app");
-const connectDB = require("./config/db");
-
-const { runSimulation } = require("./services/simulationService");
-
-const PORT = process.env.PORT || 5000;
-
-async function start() {
-  try {
-    await connectDB();
-
-    const server = http.createServer(app);
-
-    const io = new Server(server, {
-      cors: {
-        origin: "*",
-      },
-    });
-      app.set("io", io); 
-
-    io.on("connection", (socket) => {
-      console.log("Client connected:", socket.id);
-       socket.on("disconnect", () => {          // ← ADD THESE 3 LINES
-    console.log("Client disconnected:", socket.id);
-  });
-    });
-
-    server.listen(PORT,async () => {
-      console.log(`✅ Server running on port ${PORT}`);
-       await verifyEmailConfig();
-    });
-
-    setInterval(() => {
-      runSimulation(io);
-    }, 10000);
-
-  } catch (err) {
-    console.error("❌ Failed to start server:", err);
-    process.exit(1);
-  }
-}
-
-start();*/
-require("dotenv").config(); // MUST be the very first line — before any other require
 
 const http = require("http");
 const { Server } = require("socket.io");
@@ -59,6 +7,9 @@ const app = require("./app");
 const connectDB = require("./config/db");
 const { runSimulation } = require("./services/simulationService");
 const { verifyEmailConfig } = require("./services/emailService");
+const cron = require("node-cron");
+const Mission = require("./models/Mission");
+const Drone = require("./models/Drone");
 
 const PORT = process.env.PORT || 5000;
 
@@ -73,8 +24,13 @@ async function start() {
       cors: { origin: "*" },
     });
 
+    app.set("io", io);
+
     io.on("connection", (socket) => {
       console.log("Client connected:", socket.id);
+      socket.on("disconnect", () => {
+        console.log("Client disconnected:", socket.id);
+      });
     });
 
     server.listen(PORT, () => {
@@ -84,6 +40,33 @@ async function start() {
     setInterval(() => {
       runSimulation(io);
     }, 10000);
+
+    // Runs every minute — promotes assigned missions to active when startTime arrives
+    // FIX: Mission status enum is "active" not "in_mission" ("in_mission" is only for Drone)
+    cron.schedule("* * * * *", async () => {
+      try {
+        const now = new Date();
+        const due = await Mission.find({
+          status: "assigned",
+          startTime: { $lte: new Date(now.getTime() + 60 * 1000), $ne: null },
+        });
+
+        for (const mission of due) {
+          mission.status = "active";   // ← was "in_mission" which is NOT a valid Mission status
+          mission.startedAt = now;
+          await mission.save();
+
+          if (mission.drone) {
+            // Drone model DOES allow "in_mission" — this is correct
+            await Drone.findByIdAndUpdate(mission.drone, { status: "in_mission" });
+          }
+
+          console.log(`⏱ Mission "${mission.title}" auto-activated at ${now.toISOString()}`);
+        }
+      } catch (err) {
+        console.error("Cron job error:", err.message);
+      }
+    });
 
   } catch (err) {
     console.error("❌ Failed to start server:", err);
