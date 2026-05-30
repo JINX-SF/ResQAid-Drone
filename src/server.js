@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const http = require("http");
 const { Server } = require("socket.io");
+const jwt = require("jsonwebtoken"); // Moved to the top for clean resource allocation
 
 const app = require("./app");
 const connectDB = require("./config/db");
@@ -28,6 +29,18 @@ async function start() {
 
     io.on("connection", (socket) => {
       console.log("Client connected:", socket.id);
+
+      // FIX: Real-time socket user room assignment pipeline
+      socket.on("join-user-room", (token) => {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          socket.join(decoded.id); // Joins a room named after the userId
+          console.log(`Socket ${socket.id} joined room: ${decoded.id}`);
+        } catch (e) {
+          console.log("Invalid token for room join alignment verification rejection.");
+        }
+      });
+
       socket.on("disconnect", () => {
         console.log("Client disconnected:", socket.id);
       });

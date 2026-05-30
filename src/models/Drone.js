@@ -5,20 +5,17 @@ const DroneSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     status: {
       type: String,
-      enum: ["idle","assigned", "in_mission", "disabled"],
+      enum: ["idle", "assigned", "in_mission", "disabled"],
       default: "idle",
     },
-
-isDisabled: {
-  type: Boolean,
-  default: false,
-},
-
-disableReason: {
-  type: String,
-  default: "",
-},
-
+    isDisabled: {
+      type: Boolean,
+      default: false,
+    },
+    disableReason: {
+      type: String,
+      default: "",
+    },
     speed:           { type: Number, default: 0 },
     maxRange:        { type: Number, default: 0 },
     payloadCapacity: { type: Number, default: 0 },
@@ -42,27 +39,23 @@ disableReason: {
       default: "camera_quadcopter",
     },
     lastEditedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-     ref: "User",
-  },
-
-lastEditedAt: {
-  type: Date,
-},
-assignedMissionName: {
-  type: String,
-  default: "",
-},
-
-assignedAt: {
-  type: Date,
-  default: null,
-},
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    lastEditedAt: {
+      type: Date,
+    },
+    assignedMissionName: {
+      type: String,
+      default: "",
+    },
+    assignedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
- 
 );
-
 
 // checks payload then marks drone as busy
 DroneSchema.methods.assignMission = function (mission) {
@@ -96,6 +89,5 @@ DroneSchema.methods.completeMission = function () {
   this.assignedMissionName = "";
   this.assignedAt = null;
 };
-
 
 module.exports = mongoose.model("Drone", DroneSchema);

@@ -96,11 +96,17 @@ const EmergencyRequestSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    mission: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Mission",
+  default: null,
+},
   },
 
   {
     timestamps: true,
   }
+
 );
 
 module.exports = mongoose.model(

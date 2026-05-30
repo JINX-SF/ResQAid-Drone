@@ -95,17 +95,29 @@ export default function MyRequestsPage() {
                     {r.description || "—"}
                   </div>
 
-                  {/* Column 3: Urgency */}
-                  <div>
-                    <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded uppercase tracking-wide ${
-                      r.urgency === "high" || r.urgency === "critical" 
-                        ? "text-red-400 bg-red-500/10" 
-                        : "text-yellow-400 bg-yellow-500/10"
-                    }`}>
-                      {r.urgency || "Normal"}
-                    </span>
-                  </div>
+                {/* Column 3: Urgency */}
+<div>
+  {(() => {
+    // Convert to lowercase to handle any capitalization issues safely
+    const urgencyVal = r.urgency ? r.urgency.toLowerCase() : "normal";
 
+    const styleMap: Record<string, string> = {
+      critical: "text-red-200 bg-red-950 border border-red-900", // Dark Red
+      high:     "text-white bg-red-600 border border-red-700",    // Red 600
+      medium:   "text-amber-400 bg-amber-500/10 border border-amber-500/20",
+      normal:   "text-zinc-400 bg-zinc-800/40 border border-zinc-700/30",
+    };
+
+    // If the backend passes something unexpected, default it to normal
+    const currentStyle = styleMap[urgencyVal] || styleMap.normal;
+
+    return (
+      <span className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded uppercase tracking-wide ${currentStyle}`}>
+        {r.urgency || "Normal"}
+      </span>
+    );
+  })()}
+</div>
                   {/* Column 4: Date & Location */}
                   <div className="text-xs space-y-0.5">
                     <div className="text-white/70 font-medium">
