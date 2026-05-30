@@ -21,14 +21,20 @@ export default function EditDrone() {
       try {
         const res = await API.get(`/drones/${id}`);
         const d = res.data.data;
+        console.log("DRONE DATA", d);
 
         setForm({
           name: d.name,
           type: d.type,
           status: d.status,
           battery: d.battery,
-          lat: d.location?.lat || 0,
-          lng: d.location?.lng || 0,
+          lat: Number.isFinite(d.location?.lat)
+  ? d.location.lat
+  : 0,
+
+lng: Number.isFinite(d.location?.lng)
+  ? d.location.lng
+  : 0,
         });
       } catch (err) {
         console.error(err);

@@ -16,6 +16,7 @@ import { Map, Camera, CheckCircle, Loader2 } from "lucide-react";
 import API from "@/api";
 
 const Controle = () => {
+  
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [mainView, setMainView] = useState<"camera" | "map">("camera");
 
@@ -43,6 +44,26 @@ const Controle = () => {
       socket.off("missionUpdated");
     };
   }, []);
+
+  useEffect(() => {
+  socket.on("missionCompleted", () => {
+    const sound = new Audio(
+      "/audio/SoundOfStartEnd.m4a"
+    );
+
+    sound.play();
+
+    setTimeout(() => {
+      new Audio(
+        "/audio/MissinAcopSucc.m4a"
+      ).play();
+    }, 1000);
+  });
+
+  return () => {
+    socket.off("missionCompleted");
+  };
+}, []);
 
   // ── fetch missions on mount ──────────────────────────────────────────────
   useEffect(() => {
@@ -124,6 +145,8 @@ const Controle = () => {
     // Fetch fresh data with populated drone
     try {
       const res = await API.get(`/missions/${mission._id}`);
+      console.log("MISSIONS FROM API");
+console.log(res.data);
       const fresh = res.data.data;
       if (fresh) {
         setSelectedMission(fresh);
@@ -308,13 +331,14 @@ const Controle = () => {
                     <><Camera className="h-3.5 w-3.5" /> View Camera</>
                   )}
                 </button>
+                
               </div>
 
               {/* Bottom panels */}
               <div className="grid grid-cols-3 gap-4">
                 <DroneStatus selectedMission={selectedMission} />
                 <Detection />
-                <MissionMap />
+                <MissionMap selectedMission={selectedMission} />
               </div>
             </div>
 

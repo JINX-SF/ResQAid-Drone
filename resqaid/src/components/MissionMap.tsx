@@ -17,7 +17,11 @@ interface Target {
   lng: number;
 }
 
-const MissionMap = () => {
+interface Props {
+  selectedMission: any;
+}
+
+const MissionMap = ({ selectedMission }: Props) => {
   const [dronePos, setDronePos] = useState<DronePos | null>(null);
   const [target, setTarget]     = useState<Target | null>(null);
   const [route, setRoute] = useState<LatLng[]>([]);

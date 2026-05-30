@@ -18,8 +18,12 @@ type Mission = {
   urgency: string;
   startTime: string;
   drone?: any;
+  departureLocation?: {
+  lat: number;
+  lng: number;
+};
   description?: string;
-  departureLocation?: { name?: string; lat: number; lng: number };
+  dLocation?: { name?: string; lat: number; lng: number };
   targetArea?: { name?: string; lat: number; lng: number };
   startedAt?: string;
   createdAt?: string;
@@ -68,11 +72,11 @@ function UrgencyPill({ urgency }: { urgency: string }) {
 // ─── Type Cell ────────────────────────────────────────────────────────────────
 function TypeCell({ type }: { type: string }) {
   const config: Record<string, { icon: React.ReactNode; label: string }> = {
-    SAR:        { icon: <Search  className="h-6 w-6 text-cyan-400" />,    label: "Search & Rescue" },
+    SAR:        { icon: <Search   className="h-6 w-6 text-cyan-400" />,    label: "Search & Rescue" },
     logistics:  { icon: <Package className="h-6 w-6 text-yellow-400" />,  label: "Remote Logistics" },
-    oilgas:     { icon: <Gauge   className="h-6 w-6 text-orange-500" />,  label: "Oil & Gas Monitoring" },
-    industrial: { icon: <Wrench  className="h-6 w-6 text-orange-400" />,  label: "Industrial Inspection" },
-    security:   { icon: <Shield  className="h-6 w-6 text-red-400" />,     label: "Security Patrol" },
+    oilgas:     { icon: <Gauge    className="h-6 w-6 text-orange-500" />,  label: "Oil & Gas Monitoring" },
+    industrial: { icon: <Wrench   className="h-6 w-6 text-orange-400" />,  label: "Industrial Inspection" },
+    security:   { icon: <Shield   className="h-6 w-6 text-red-400" />,     label: "Security Patrol" },
   };
 
   const { icon, label } = config[type] ?? { icon: null, label: type };
@@ -183,10 +187,11 @@ export default function MissionsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
 
+  // CHANGED: Numeric coordinate values are now tracked as string states so negative signs and decimal paths do not break while typing
   const [form, setForm] = useState({
-    title: "", type: "SAR", status: "pending", payloadWeight: 0,
-    urgency: "Low", startTime: "", locationName: "", lat: 0, lng: 0,
-    targetArea: "", targetLat: 0, targetLng: 0, droneId: "", description: "",
+    title: "", type: "SAR", status: "pending", payloadWeight: "0",
+    urgency: "Low", startTime: "", locationName: "", lat: "", lng: "",
+    targetArea: "", targetLat: "", targetLng: "", droneId: "", description: "",
   });
 
   const fetchMissions = async () => {
@@ -195,6 +200,7 @@ export default function MissionsPage() {
       const missionsData = res.data?.data || [];
       setMissions(missionsData);
       saveCache("missions_cache", missionsData);
+    
     } catch (err) {
       console.error("Online missions fetch failed:", err);
       const cached = loadCache("missions_cache");
@@ -222,11 +228,11 @@ export default function MissionsPage() {
           urgency: req.urgency || prev.urgency,
           description: req.description || "",
           locationName: req.fromLocation?.name || req.location?.name || "",
-          lat: req.fromLocation?.lat || req.location?.lat || 0,
-          lng: req.fromLocation?.lng || req.location?.lng || 0,
+          lat: String(req.fromLocation?.lat || req.location?.lat || "0"),
+          lng: String(req.fromLocation?.lng || req.location?.lng || "0"),
           targetArea: req.location?.name || "",
-          targetLat: req.location?.lat || 0,
-          targetLng: req.location?.lng || 0,
+          targetLat: String(req.location?.lat || "0"),
+          targetLng: String(req.location?.lng || "0"),
           droneId: droneId || "",
           status: "assigned",
         }));
@@ -282,19 +288,38 @@ export default function MissionsPage() {
 
   const handleAddMission = async () => {
     try {
-      if (!form.locationName.trim()) { alert("Departure location is required"); return; }
+      if (!form.locationName.trim()) { alert("d location is required"); return; }
       if (!form.startTime) { alert("Mission start time is required"); return; }
-      if (Number(form.lat) < -90 || Number(form.lat) > 90) { alert("Latitude must be between -90 and 90"); return; }
-      if (Number(form.lng) < -180 || Number(form.lng) > 180) { alert("Longitude must be between -180 and 180"); return; }
+      
+      // CHANGED: Parse the string values back into real floats right before backend submit/validation logic
+      const departureLat = parseFloat(form.lat);
+      const departureLng = parseFloat(form.lng);
+      const destinationLat = parseFloat(form.targetLat);
+      const destinationLng = parseFloat(form.targetLng);
+
+      if (isNaN(departureLat) || departureLat < -90 || departureLat > 90) { alert("Latitude must be between -90 and 90"); return; }
+      if (isNaN(departureLng) || departureLng < -180 || departureLng > 180) { alert("Longitude must be between -180 and 180"); return; }
 
       const missionData = {
-        title: form.title || form.type, type: form.type, status: form.status,
-        payloadWeight: Number(form.payloadWeight), urgency: form.urgency,
-        startTime: form.startTime, description: form.description,
-        drone: form.droneId || undefined,
-        departureLocation: { name: form.locationName, lat: Number(form.lat), lng: Number(form.lng) },
-        targetArea: { name: form.targetArea, lat: Number(form.targetLat), lng: Number(form.targetLng) },
-      };
+  title: form.title || form.type,
+  type: form.type,
+  status: form.status,
+  payloadWeight: Number(form.payloadWeight) || 0,
+  urgency: form.urgency,
+  startTime: form.startTime,
+  description: form.description,
+  drone: form.droneId || undefined,
+
+  departureLocation: {
+    lat: departureLat,
+    lng: departureLng,
+  },
+
+  targetArea: {
+    lat: destinationLat,
+    lng: destinationLng,
+  },
+};
 
       if (isEditing && editingMissionId) {
         await API.put(`/missions/${editingMissionId}`, missionData);
@@ -303,6 +328,8 @@ export default function MissionsPage() {
         const pendingMission = savePendingMission(missionData);
         try {
           updatePendingMissionStatus(pendingMission.localId, "syncing");
+          console.log("🚀 MISSION DATA SENT:");
+console.log(JSON.stringify(missionData, null, 2));
           await API.post("/missions", missionData);
           removePendingMission(pendingMission.localId);
           sessionStorage.removeItem("assignedDrone");
@@ -339,20 +366,23 @@ export default function MissionsPage() {
     setIsEditing(true); setEditingMissionId(mission._id);
     setForm({
       title: mission.title || "", type: mission.type || "SAR", status: mission.status || "assigned",
-      payloadWeight: mission.payloadWeight || 0, urgency: mission.urgency || "Low",
+      payloadWeight: String(mission.payloadWeight || "0"), urgency: mission.urgency || "Low",
       startTime: mission.startTime ? mission.startTime.slice(0, 16) : "",
-      locationName: mission.departureLocation?.name || "", lat: mission.departureLocation?.lat || 0,
-      lng: mission.departureLocation?.lng || 0, targetArea: mission.targetArea?.name || "",
-      targetLat: mission.targetArea?.lat || 0, targetLng: mission.targetArea?.lng || 0,
+     locationName: "",
+lat: String(mission.departureLocation?.lat ?? "0"),
+lng: String(mission.departureLocation?.lng ?? "0"), 
+      targetArea: mission.targetArea?.name || "",
+      targetLat: String(mission.targetArea?.lat ?? "0"), 
+      targetLng: String(mission.targetArea?.lng ?? "0"),
       droneId: mission.drone?._id || mission.drone || "", description: mission.description || "",
     });
     setOpen(true);
   };
 
   const resetForm = () => setForm({
-    title: "", type: "SAR", status: "pending", payloadWeight: 0, urgency: "Low",
-    startTime: "", locationName: "", lat: 0, lng: 0, targetArea: "", targetLat: 0,
-    targetLng: 0, droneId: "", description: "",
+    title: "", type: "SAR", status: "assigned", payloadWeight: "0", urgency: "Low",
+    startTime: "", locationName: "", lat: "", lng: "", targetArea: "", targetLat: "",
+    targetLng: "", droneId: "", description: "",
   });
 
   return (
@@ -390,7 +420,7 @@ export default function MissionsPage() {
                   </Field>
 
                   <Field label="Payload Weight (kg)">
-                    <input className={inputCls} type="number" value={form.payloadWeight} onChange={(e) => setForm({ ...form, payloadWeight: Number(e.target.value) })} />
+                    <input className={inputCls} type="text" value={form.payloadWeight} onChange={(e) => setForm({ ...form, payloadWeight: e.target.value })} />
                   </Field>
 
                   <Field label="Urgency">
@@ -421,8 +451,9 @@ export default function MissionsPage() {
                 </h3>
                 <div className="space-y-3">
                   <Field label="Location Name"><input className={inputCls} placeholder="Base Alpha" value={form.locationName} onChange={(e) => setForm({ ...form, locationName: e.target.value })} /></Field>
-                  <Field label="Latitude"><input type="number" className={inputCls} placeholder="35.6971" value={form.lat} onChange={(e) => setForm({ ...form, lat: Number(e.target.value) })} /></Field>
-                  <Field label="Longitude"><input type="number" className={inputCls} placeholder="-0.6308" value={form.lng} onChange={(e) => setForm({ ...form, lng: Number(e.target.value) })} /></Field>
+                  {/* CHANGED: Changed input type to text to allow custom formatting / negative typing freely without spinners blocking input formatting */}
+                  <Field label="Latitude"><input type="text" className={inputCls} placeholder="35.6971" value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} /></Field>
+                  <Field label="Longitude"><input type="text" className={inputCls} placeholder="-0.6308" value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} /></Field>
                 </div>
               </section>
 
@@ -433,8 +464,9 @@ export default function MissionsPage() {
                 </h3>
                 <div className="space-y-3">
                   <Field label="Target area name"><input className={inputCls} placeholder="Sector 7" value={form.targetArea} onChange={(e) => setForm({ ...form, targetArea: e.target.value })} /></Field>
-                  <Field label="Target latitude"><input type="number" className={inputCls} value={form.targetLat} onChange={(e) => setForm({ ...form, targetLat: Number(e.target.value) })} /></Field>
-                  <Field label="Target longitude"><input type="number" className={inputCls} value={form.targetLng} onChange={(e) => setForm({ ...form, targetLng: Number(e.target.value) })} /></Field>
+                  {/* CHANGED: Changed input type to text here too */}
+                  <Field label="Target latitude"><input type="text" className={inputCls} placeholder="35.6971" value={form.targetLat} onChange={(e) => setForm({ ...form, targetLat: e.target.value })} /></Field>
+                  <Field label="Target longitude"><input type="text" className={inputCls} placeholder="-0.6308" value={form.targetLng} onChange={(e) => setForm({ ...form, targetLng: e.target.value })} /></Field>
                   <p className="text-xs text-green-400/80">Mission destination coordinates.</p>
                 </div>
               </section>
@@ -476,45 +508,52 @@ export default function MissionsPage() {
           </div>
 
           <ul>
-            {missions?.map((m) => (
-              <li
-                key={m._id}
-                className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 px-8 py-5 border-b border-white/5 hover:bg-white/[0.03] transition-all text-base"
-              >
-                <div className="font-medium text-white/80">{m._id?.slice(-5) || "N/A"}</div>
+  {missions?.map((m) => (
+    <li
+      key={m._id}
+      className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 px-8 py-5 border-b border-white/5 hover:bg-white/[0.03] transition-all text-base"
+    >
+      <div className="font-medium text-white/80">{m._id?.slice(-5) || "N/A"}</div>
 
-                <div className="font-medium text-white/90">
-                  <TypeCell type={m.type} />
-                </div>
+      <div className="font-medium text-white/90">
+        <TypeCell type={m.type} />
+      </div>
 
-                <div className="font-medium text-white/90">
-                  <StatusPill status={m.status} />
-                </div>
+      <div className="font-medium text-white/90">
+        <StatusPill status={m.status} />
+      </div>
 
-                <div className="font-medium text-white/85">{m.payloadWeight} kg</div>
+      <div className="font-medium text-white/85">{m.payloadWeight} kg</div>
 
-                <div className="font-medium text-white/80">
-                  <UrgencyPill urgency={m.urgency} />
-                </div>
+      <div className="font-medium text-white/80">
+        <UrgencyPill urgency={m.urgency} />
+      </div>
 
-                <div className="font-medium text-white/80">
-                  {m.startTime ? new Date(m.startTime).toLocaleString()
-                    : m.startedAt ? new Date(m.startedAt).toLocaleString()
-                    : m.createdAt ? new Date(m.createdAt).toLocaleString()
-                    : "—"}
-                </div>
+      <div className="font-medium text-white/80">
+        {m.startTime ? new Date(m.startTime).toLocaleString()
+          : m.startedAt ? new Date(m.startedAt).toLocaleString()
+          : m.createdAt ? new Date(m.createdAt).toLocaleString()
+          : "—"}
+      </div>
 
-                <div className="font-medium text-white/80">📍 {m.departureLocation?.lat || 0}, {m.departureLocation?.lng || 0}</div>
-                <div className="font-medium text-white/80">🎯 {m.targetArea?.lat || 0}, {m.targetArea?.lng || 0}</div>
+      {/* ── FIXED LOCATION CELL ── */}
+      <div className="font-medium text-white/80 truncate">
+        📍 {m.dLocation?.name ? m.dLocation.name : `${m.dLocation?.lat ?? 0}, ${m.dLocation?.lng ?? 0}`}
+      </div>
 
-                <div className="flex items-center justify-end gap-2">
-                  <button onClick={() => handleEditMission(m)} className="rounded-xl bg-green-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-green-400 active:scale-95">Edit</button>
-                  <button onClick={() => navigate(`/missions/${m._id}/history`)} className="rounded-xl bg-blue-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-blue-400 active:scale-95">History</button>
-                  <button onClick={() => { setSelectedMission(m); setShowDisableModal(true); }} className="rounded-xl bg-red-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-red-400 active:scale-95">Disable</button>
-                </div>
-              </li>
-            ))}
-          </ul>
+      {/* ── FIXED TARGET AREA CELL ── */}
+      <div className="font-medium text-white/80 truncate">
+        🎯 {m.targetArea?.name ? m.targetArea.name : `${m.departureLocation?.lat ?? 0}, ${m.departureLocation?.lng ?? 0}`}
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
+        <button onClick={() => handleEditMission(m)} className="rounded-xl bg-green-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-green-400 active:scale-95">Edit</button>
+        <button onClick={() => navigate(`/missions/${m._id}/history`)} className="rounded-xl bg-blue-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-blue-400 active:scale-95">History</button>
+        <button onClick={() => { setSelectedMission(m); setShowDisableModal(true); }} className="rounded-xl bg-red-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-red-400 active:scale-95">Disable</button>
+      </div>
+    </li>
+  ))}
+</ul>
         </Glass>
 
         {/* ── Disable Modal ── */}

@@ -44,8 +44,6 @@ function TypeCell({ type }: { type: string }) {
     fixed_wing:        { icon: <Wrench className="h-5 w-5 text-blue-400" />,   label: "Fixed-Wing Drone" },
     vtol_hybrid:       { icon: <Package className="h-5 w-5 text-yellow-400" />, label: "VTOL Hybrid" },
     sensor_drone:      { icon: <Gauge className="h-5 w-5 text-orange-500" />,  label: "Sensor Drone" },
-
-    // Database fallbacks matching all your active fields flawlessly
     industrial:        { icon: <Wrench className="h-5 w-5 text-blue-400" />,   label: "Industrial Drone" },
     security:          { icon: <Shield className="h-5 w-5 text-purple-400" />, label: "Security Drone" },
     sar:               { icon: <Search className="h-5 w-5 text-cyan-400" />,   label: "Search & Rescue" },
@@ -118,7 +116,6 @@ function CustomSelect({
   );
 }
 
-// ─── Options ──────────────────────────────────────────────────────────────────
 const TYPE_OPTIONS = [
   { value: "camera_quadcopter", label: "Camera Quadcopter" },
   { value: "thermal_drone",     label: "Thermal Drone" },
@@ -134,6 +131,23 @@ const STATUS_OPTIONS = [
   { value: "disabled",   label: "Disabled" },
 ];
 
+// ─── HELPER FOR RESETTING FORM STATE AS STRINGS ──────────────────────────────────────
+const getInitialFormState = () => ({
+  name: "",
+  type: "camera_quadcopter",
+  status: "idle",
+  speed: "0",
+  maxRange: "0",
+  payloadCapacity: "0",
+  battery: "100",
+  lat: "0",
+  lng: "0",
+  alt: "0",
+  baseLat: "0",
+  baseLng: "0",
+  baseAlt: "0",
+});
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function DronesPage() {
   const navigate = useNavigate();
@@ -142,21 +156,8 @@ export default function DronesPage() {
   const [disableReason, setDisableReason] = useState("");
   const [otherReason, setOtherReason] = useState("");
 
-  const [form, setForm] = useState({
-    name: "",
-    type: "camera_quadcopter",
-    status: "idle",
-    speed: 0,
-    maxRange: 0,
-    payloadCapacity: 0,
-    battery: 100,
-    lat: 0,
-    lng: 0,
-    alt: 0,
-    baseLat: 0,
-    baseLng: 0,
-    baseAlt: 0,
-  });
+  // FIXED: All fields initialized as clean strings to prevent breaking inputs on negative numbers (-)
+  const [form, setForm] = useState(getInitialFormState());
 
   const [open, setOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -184,16 +185,25 @@ export default function DronesPage() {
 
   const handleAddDrone = async () => {
     try {
+      // FIXED: Convert all numeric string fields using parseFloat/Number cleanly before transmission
       const droneData = {
         name: form.name,
         type: form.type,
         status: form.status,
-        speed: Number(form.speed),
-        maxRange: Number(form.maxRange),
-        payloadCapacity: Number(form.payloadCapacity),
-        battery: Number(form.battery),
-        location: { lat: Number(form.lat), lng: Number(form.lng), alt: Number(form.alt) },
-        homeBase: { lat: Number(form.baseLat), lng: Number(form.baseLng), alt: Number(form.baseAlt) },
+        speed: Number(form.speed) || 0,
+        maxRange: Number(form.maxRange) || 0,
+        payloadCapacity: Number(form.payloadCapacity) || 0,
+        battery: Number(form.battery) || 0,
+        location: { 
+          lat: parseFloat(form.lat) || 0, 
+          lng: parseFloat(form.lng) || 0, 
+          alt: parseFloat(form.alt) || 0 
+        },
+        homeBase: { 
+          lat: parseFloat(form.baseLat) || 0, 
+          lng: parseFloat(form.baseLng) || 0, 
+          alt: parseFloat(form.baseAlt) || 0 
+        },
       };
 
       if (isEditing && editingDroneId) {
@@ -209,7 +219,7 @@ export default function DronesPage() {
       setOpen(false);
       setIsEditing(false);
       setEditingDroneId(null);
-      setForm({ name: "", type: "camera_quadcopter", status: "idle", speed: 0, maxRange: 0, payloadCapacity: 0, battery: 100, lat: 0, lng: 0, alt: 0, baseLat: 0, baseLng: 0, baseAlt: 0 });
+      setForm(getInitialFormState());
     } catch (err: any) {
       console.log("❌ BACKEND:", err.response?.data);
       alert(err.response?.data?.message || "Error saving drone");
@@ -233,20 +243,21 @@ export default function DronesPage() {
   const handleEdit = (drone: any) => {
     setIsEditing(true);
     setEditingDroneId(drone._id);
+    // FIXED: Form state loaded with String wrappers so editing negative metrics functions cleanly
     setForm({
       name: drone.name || "",
       type: drone.type || "camera_quadcopter",
       status: drone.status || "idle",
-      speed: drone.speed || 0,
-      maxRange: drone.maxRange || 0,
-      payloadCapacity: drone.payloadCapacity || 0,
-      battery: drone.battery || 100,
-      lat: drone.location?.lat || 0,
-      lng: drone.location?.lng || 0,
-      alt: drone.location?.alt || 0,
-      baseLat: drone.homeBase?.lat || 0,
-      baseLng: drone.homeBase?.lng || 0,
-      baseAlt: drone.homeBase?.alt || 0,
+      speed: String(drone.speed ?? 0),
+      maxRange: String(drone.maxRange ?? 0),
+      payloadCapacity: String(drone.payloadCapacity ?? 0),
+      battery: String(drone.battery ?? 100),
+      lat: String(drone.location?.lat ?? 0),
+      lng: String(drone.location?.lng ?? 0),
+      alt: String(drone.location?.alt ?? 0),
+      baseLat: String(drone.homeBase?.lat ?? 0),
+      baseLng: String(drone.homeBase?.lng ?? 0),
+      baseAlt: String(drone.homeBase?.alt ?? 0),
     });
     setOpen(true);
   };
@@ -257,7 +268,12 @@ export default function DronesPage() {
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            setOpen(false);
+            setIsEditing(false);
+            setEditingDroneId(null);
+            setForm(getInitialFormState());
+          }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -316,14 +332,15 @@ export default function DronesPage() {
                   Home Base
                 </h3>
                 <div className="space-y-3">
+                  {/* FIXED: Removed type="number" and immediate numeric parsing */}
                   <Field label="Latitude">
-                    <input className={inputCls} value={form.baseLat} onChange={(e) => setForm({ ...form, baseLat: Number(e.target.value) })} />
+                    <input type="text" className={inputCls} value={form.baseLat} onChange={(e) => setForm({ ...form, baseLat: e.target.value })} />
                   </Field>
                   <Field label="Longitude">
-                    <input className={inputCls} value={form.baseLng} onChange={(e) => setForm({ ...form, baseLng: Number(e.target.value) })} />
+                    <input type="text" className={inputCls} value={form.baseLng} onChange={(e) => setForm({ ...form, baseLng: e.target.value })} />
                   </Field>
                   <Field label="Altitude">
-                    <input className={inputCls} value={form.baseAlt} onChange={(e) => setForm({ ...form, baseAlt: Number(e.target.value) })} />
+                    <input type="text" className={inputCls} value={form.baseAlt} onChange={(e) => setForm({ ...form, baseAlt: e.target.value })} />
                   </Field>
                   <p className="text-xs text-green-400/80">This is the drone's home base GPS position.</p>
                 </div>
@@ -336,17 +353,18 @@ export default function DronesPage() {
                   Performance Specifications
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
+                  {/* FIXED: Removed type="number" and immediate numeric parsing */}
                   <Field label="Speed (m/s)">
-                    <input className={inputCls} type="number" value={form.speed} onChange={(e) => setForm({ ...form, speed: Number(e.target.value) })} />
+                    <input className={inputCls} type="text" value={form.speed} onChange={(e) => setForm({ ...form, speed: e.target.value })} />
                   </Field>
                   <Field label="Max range">
-                    <input className={inputCls} type="number" value={form.maxRange} onChange={(e) => setForm({ ...form, maxRange: Number(e.target.value) })} />
+                    <input className={inputCls} type="text" value={form.maxRange} onChange={(e) => setForm({ ...form, maxRange: e.target.value })} />
                   </Field>
                   <Field label="Payload Capacity (kg)">
-                    <input className={inputCls} type="number" value={form.payloadCapacity} onChange={(e) => setForm({ ...form, payloadCapacity: Number(e.target.value) })} />
+                    <input className={inputCls} type="text" value={form.payloadCapacity} onChange={(e) => setForm({ ...form, payloadCapacity: e.target.value })} />
                   </Field>
                   <Field label="Battery (%)">
-                    <input className={inputCls} type="number" value={form.battery} onChange={(e) => setForm({ ...form, battery: Number(e.target.value) })} />
+                    <input className={inputCls} type="text" value={form.battery} onChange={(e) => setForm({ ...form, battery: e.target.value })} />
                   </Field>
                 </div>
               </section>
@@ -358,14 +376,15 @@ export default function DronesPage() {
                   Current Location
                 </h3>
                 <div className="grid grid-cols-3 gap-3">
+                  {/* FIXED: Removed immediate numeric parsing */}
                   <Field label="Latitude">
-                    <input className={inputCls} value={form.lat} onChange={(e) => setForm({ ...form, lat: Number(e.target.value) })} />
+                    <input type="text" className={inputCls} value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} />
                   </Field>
                   <Field label="Longitude">
-                    <input className={inputCls} value={form.lng} onChange={(e) => setForm({ ...form, lng: Number(e.target.value) })} />
+                    <input type="text" className={inputCls} value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} />
                   </Field>
                   <Field label="Altitude (m)">
-                    <input className={inputCls} value={form.alt} onChange={(e) => setForm({ ...form, alt: Number(e.target.value) })} />
+                    <input type="text" className={inputCls} value={form.alt} onChange={(e) => setForm({ ...form, alt: e.target.value })} />
                   </Field>
                 </div>
                 <p className="text-xs text-green-400/80 mt-3">This is the drone's current GPS position.</p>
@@ -374,7 +393,7 @@ export default function DronesPage() {
 
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
               <button
-                onClick={() => { setOpen(false); setIsEditing(false); setEditingDroneId(null); }}
+                onClick={() => { setOpen(false); setIsEditing(false); setEditingDroneId(null); setForm(getInitialFormState()); }}
                 className="px-6 py-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 backdrop-blur-xl transition"
               >
                 ⊗ Cancel
@@ -398,7 +417,7 @@ export default function DronesPage() {
               onClick={() => {
                 setIsEditing(false);
                 setEditingDroneId(null);
-                setForm({ name: "", type: "camera_quadcopter", status: "idle", speed: 0, maxRange: 0, payloadCapacity: 0, battery: 100, lat: 0, lng: 0, alt: 0, baseLat: 0, baseLng: 0, baseAlt: 0 });
+                setForm(getInitialFormState());
                 setOpen(true);
               }}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
@@ -407,7 +426,6 @@ export default function DronesPage() {
             </button>
           </div>
 
-          {/* Balanced Columns Grid Definitions */}
           <div className="grid grid-cols-[0.6fr_1.5fr_1fr_0.8fr_1fr_1.4fr] items-center gap-6 border-b border-white/10 bg-black/30 px-8 py-5 text-sm font-bold uppercase tracking-[0.18em] text-white/80">
             <div>ID</div>
             <div>Type</div>
@@ -423,15 +441,12 @@ export default function DronesPage() {
                 key={d._id}
                 className="grid grid-cols-[0.6fr_1.5fr_1fr_0.8fr_1fr_1.4fr] items-center gap-6 px-8 py-6 border-b border-white/5 text-base text-white/80 transition-all duration-300 hover:bg-white/[0.04]"
               >
-                {/* ID Metric */}
                 <div className="font-semibold text-base text-white/90">{d._id ? d._id.slice(-5) : "N/A"}</div>
 
-                {/* Big Clean Type Display */}
                 <div>
                   <TypeCell type={d.type} />
                 </div>
 
-                {/* Clean inline pill status alignment */}
                 <div className="flex flex-col items-start gap-1">
                   <StatusPill status={(d.status || "idle").toLowerCase() as Status} />
                   {d.status === "assigned" && d.assignedMissionName && (
@@ -444,16 +459,13 @@ export default function DronesPage() {
                   )}
                 </div>
 
-                {/* Big Battery Text */}
                 <div className="font-semibold text-base text-white/90">{d.battery}%</div>
 
-                {/* Big Location Text layout */}
                 <div className="flex items-center gap-2 text-base font-medium text-white/90">
                   <MapPin className="h-5 w-5 text-emerald-400 shrink-0" />
                   <span className="truncate">{d.location ? `${d.location.lat}, ${d.location.lng}` : "No location"}</span>
                 </div>
 
-                {/* Custom Action Controls */}
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={() => { setSelectedDrone(d); setShowDisableModal(true); }}
@@ -495,7 +507,7 @@ export default function DronesPage() {
 
               <div className="space-y-2">
                 {[
-                  { value: "crashed",        emoji: "⛅", label: "Weather conditions" },
+                  { value: "crashed",       emoji: "⛅", label: "Weather conditions" },
                   { value: "destroyed",     emoji: "🛡️", label: "Drone malfunction" },
                   { value: "out_of_service",emoji: "🔋", label: "Low battery" },
                   { value: "other",         emoji: "⚡", label: "Other reason" },

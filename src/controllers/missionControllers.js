@@ -13,8 +13,15 @@ const allowedNext = {
 exports.createMission = async (req, res, next) => {
   try {
     console.log("MISSION STATUS RECEIVED:", req.body.status);
-    const mission = await Mission.create(req.body);
 
+    console.log("📥 BODY RECEIVED:");
+console.log(JSON.stringify(req.body, null, 2));
+
+console.log("📥 BODY RECEIVED:");
+console.log(JSON.stringify(req.body, null, 2));
+    const mission = await Mission.create(req.body);
+console.log("💾 SAVED MISSION:");
+console.log(JSON.stringify(mission, null, 2));
     // If the user already picked a drone (from Mission Intelligence),
     // use that drone — do NOT auto-override with a different one.
     if (req.body.drone) {

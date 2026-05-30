@@ -1,5 +1,6 @@
 const Drone = require("../models/Drone");
 const DroneHistory = require("../models/DroneHistory");
+const activeFlights = new Map();
 
 exports.createDrone = async (req, res, next) => {
   try {
@@ -245,6 +246,7 @@ exports.gotoLocation = async (req, res, next) => {
 
       if (step >= totalSteps) {
         clearInterval(interval);
+        activeFlights.delete(drone._id.toString());
         drone.status = "idle";
         drone.location.lat = endLat;
         drone.location.lng = endLng;
@@ -273,6 +275,7 @@ exports.gotoLocation = async (req, res, next) => {
         });
       }
     }, 1000);
+    activeFlights.set(drone._id.toString(), interval);
 
     res.json({
       success: true,
@@ -426,6 +429,11 @@ exports.returnHome = async (req, res, next) => {
 
       if (step >= totalSteps) {
         clearInterval(interval);
+        activeFlights.delete(drone._id.toString());
+        io.emit("missionCompleted", {
+  droneId: drone._id,
+  droneName: drone.name,
+});
         drone.status = "idle";
         drone.location.lat = endLat;
         drone.location.lng = endLng;
@@ -446,6 +454,7 @@ exports.returnHome = async (req, res, next) => {
         });
       }
     }, 1000);
+    activeFlights.set(drone._id.toString(), interval);
 
     res.json({ success: true, message: `${drone.name} returning to base` });
   } catch (err) { next(err); }
@@ -455,6 +464,12 @@ exports.returnHome = async (req, res, next) => {
 // called by: POST /api/drones/:id/emergency-stop
 exports.emergencyStop = async (req, res, next) => {
   try {
+    const flight = activeFlights.get(req.params.id);
+
+if (flight) {
+  clearInterval(flight);
+  activeFlights.delete(req.params.id);
+}
     const drone = await Drone.findByIdAndUpdate(
       req.params.id,
       { status: "maintenance" },
