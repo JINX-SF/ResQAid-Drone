@@ -17,7 +17,8 @@ async function runSimulation(io) {
   try {
     console.log("🔁 Simulation running...");
 
-    let pendingMissions = await Mission.find({ status: "pending" });
+    // This query is perfect! It finds missions matching your strict status enum
+    let pendingMissions = await Mission.find({ status: "assigned" });
     const drones = await Drone.find();
 
     // Critical missions go first
@@ -67,7 +68,7 @@ async function runSimulation(io) {
 
       console.log(`🚁 Assigning ${bestDrone.name} to mission ${mission._id}`);
 
-      // update database
+      // update database — values match strict schema rules perfectly
       mission.drone = bestDrone._id;
       mission.status = "active";
       mission.startedAt = new Date();
@@ -76,11 +77,22 @@ async function runSimulation(io) {
       bestDrone.status = "in_mission";
       await bestDrone.save();
 
+      // 🌟 FIX: Also send an update to the user's private socket room if a user is attached
+      if (mission.user) {
+        io.to(mission.user.toString()).emit("request-updated", {
+          requestId: mission._id,
+          status: "active",
+          mission: {
+            drone: { name: bestDrone.name }
+          }
+        });
+      }
+
       // tell frontend mission started — MissionInfo updates
       io.emit("missionUpdated", {
         missionId:  mission._id,
         title:      mission.title,
-        type:       mission.type,
+        type:       mission.type, // This will naturally be "SAR" from your database documents
         urgency:    mission.urgency,
         status:     "active",
         droneId:    bestDrone._id,
@@ -127,7 +139,6 @@ function startTracking(io, drone, mission, weather) {
   const totalSteps = 20; // 20 seconds of live flight
   let step = 0;
 
-  // what the camera "sees" at different stages of flight
   const scenes = [
     "Initiating takeoff sequence...",
     "Climbing to cruise altitude...",
@@ -143,31 +154,25 @@ function startTracking(io, drone, mission, weather) {
     "Returning to base...",
   ];
 
-  // total battery to drain over the whole mission
   const totalDrain = estimateBatteryDrain(drone, mission, weather);
 
   const interval = setInterval(async () => {
     step++;
-    const progress = step / totalSteps; // 0.0 to 1.0
+    const progress = step / totalSteps;
 
-    // GPS moves smoothly from homeBase to targetArea
-    // progress=0 means at home, progress=1 means at target
     const currentLat = startLat + (endLat - startLat) * progress;
     const currentLng = startLng + (endLng - startLng) * progress;
 
-    // altitude: climb at start, cruise in middle, descend at end
     const altitude =
-      progress < 0.1  ? progress * 10 * 50          // 0→50m climbing
-      : progress > 0.85 ? (1 - progress) / 0.15 * 50 // 50→0m descending
-      : 50;                                            // 50m cruising
+      progress < 0.1  ? progress * 10 * 50
+      : progress > 0.85 ? (1 - progress) / 0.15 * 50
+      : 50;
 
-    // speed: slower when climbing/descending
     const speed =
       progress < 0.1 || progress > 0.85
         ? Math.round(drone.speed * 0.4)
         : drone.speed;
 
-    // drain battery a little each step
     const drainPerStep = totalDrain / totalSteps;
     drone.battery = Math.max(0, drone.battery - drainPerStep);
 
@@ -177,7 +182,6 @@ function startTracking(io, drone, mission, weather) {
       scenes.length - 1
     );
 
-    // ── EMIT 1: GPS position → MissionMap marker moves ──
     io.emit("dronePosition", {
       droneId:   drone._id,
       name:      drone.name,
@@ -191,7 +195,6 @@ function startTracking(io, drone, mission, weather) {
       missionId: mission._id,
     });
 
-    // ── EMIT 2: battery draining → DroneStatus bar animates ──
     io.emit("batteryUpdate", {
       droneId:  drone._id,
       name:     drone.name,
@@ -199,7 +202,6 @@ function startTracking(io, drone, mission, weather) {
       draining: true,
     });
 
-    // ── EMIT 3: camera data → CameraFeed panel updates ──
     io.emit("cameraFeed", {
       droneId:   drone._id,
       name:      drone.name,
@@ -225,7 +227,14 @@ function startTracking(io, drone, mission, weather) {
       drone.status = "idle";
       await drone.save();
 
-      // tell frontend everything is done
+      // 🌟 FIX: Update private room when tracking completes
+      if (mission.user) {
+        io.to(mission.user.toString()).emit("request-updated", {
+          requestId: mission._id,
+          status: "completed"
+        });
+      }
+
       io.emit("missionUpdated", {
         missionId:   mission._id,
         title:       mission.title,
@@ -268,15 +277,14 @@ function startTracking(io, drone, mission, weather) {
         desc:  `${drone.name} returned to base. Battery: ${Math.round(drone.battery)}%`,
         time:  new Date().toLocaleTimeString(),
       });
-
+// ... code above
       console.log(`✅ Mission ${mission._id} done. Battery: ${Math.round(drone.battery)}%`);
     }
-  }, 1000); // fires every 1 second
+  }, 1000); // 
 
   activeMissions.set(drone._id.toString(), interval);
 }
 
-// calculates compass direction from point A to point B in degrees
 function calcHeading(lat1, lng1, lat2, lng2) {
   const dLng = lng2 - lng1;
   const y = Math.sin(dLng) * Math.cos(lat2);

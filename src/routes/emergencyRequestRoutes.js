@@ -14,6 +14,7 @@ const {
 } = require("../controllers/emergencyRequestControllers");
 
 const { protect } = require("../middleware/authMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
 
 router.post("/",             protect, createRequest);
 router.get("/my-requests",   protect, getMyRequests);
@@ -33,5 +34,6 @@ router.delete("/:id", protect, deleteRequest);
 
 router.put("/:id/accept", protect, acceptRequest);
 router.put("/:id/reject", protect, rejectRequest);
+
 
 module.exports = router;
