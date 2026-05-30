@@ -17,7 +17,8 @@ import bg from "@/assets/rescue-bg.jpg";
 import DroneIcon from "../components/DroneIcon";
 import { Link } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
+import socket from "@/socket"; 
 
 // Redesigned Glass Component with a glowing translucent profile
 function Glass({
@@ -36,9 +37,8 @@ function Glass({
   );
 }
 
-type Variant = "progress" | "completed" | "rejected" | "accepted";
+type Variant = "progress" | "completed" | "rejected" | "accepted" | "pending";
 
-// High contrast status badges matching your dark background
 function StatusBadge({
   variant,
   children,
@@ -46,15 +46,19 @@ function StatusBadge({
   variant: Variant;
   children: React.ReactNode;
 }) {
+  // Normalize string for safety checks
+  const statusKey = variant ? (variant.toLowerCase() as Variant) : "progress";
+
   const styles: Record<Variant, string> = {
-    progress: "bg-amber-400/20 border border-amber-400/50 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.15)]",
+    pending:   "bg-amber-400/20 border border-amber-400/50 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.15)]",
+    progress:  "bg-amber-400/20 border border-amber-400/50 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.15)]",
     completed: "bg-emerald-400/20 border border-emerald-400/50 text-emerald-300 shadow-[0_0_15px_rgba(52,211,153,0.15)]",
-    rejected: "bg-red-400/20 border border-red-400/50 text-red-300 shadow-[0_0_15px_rgba(248,113,113,0.15)]",
-    accepted: "bg-cyan-400/20 border border-cyan-400/50 text-cyan-300 shadow-[0_0_15px_rgba(34,211,238,0.15)]",
+    rejected:  "bg-red-400/20 border border-red-400/50 text-red-300 shadow-[0_0_15px_rgba(248,113,113,0.15)]",
+    accepted:  "bg-cyan-400/20 border border-cyan-400/50 text-cyan-300 shadow-[0_0_15px_rgba(34,211,238,0.15)]",
   };
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-xl px-3 py-1 text-xs font-black uppercase tracking-wider ${styles[variant]}`}
+      className={`inline-flex items-center justify-center rounded-xl px-3 py-1 text-xs font-black uppercase tracking-wider ${styles[statusKey] || styles.progress}`}
     >
       {children}
     </span>
@@ -62,28 +66,97 @@ function StatusBadge({
 }
 
 export default function RequestPage() {
-  const requests: { id: string; date: string; status: Variant; label: string }[] = [
-    { id: "#24", date: "24/03/2026", status: "progress", label: "in progress" },
-    { id: "#18", date: "24/03/2026", status: "completed", label: "Completed" },
-    { id: "#05", date: "24/03/2026", status: "completed", label: "Completed" },
-    { id: "#04", date: "24/03/2026", status: "rejected", label: "rejected" },
-  ];
-
+  const [requests, setRequests] = useState<any[]>([]); // Defaulted safe array
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null); 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  // Initial Fetch Effect
+  useEffect(() => {
+    fetchMyRequests();
+    fetchProfile();
+  }, []);
+
+  // Real-time Web Socket Listeners Effect
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    socket.emit("join-user-room", token);
+
+    socket.on("request-updated", (payload) => {
+      setRequests((prev) => {
+        // Fallback guard to protect array mutation loops
+        if (!Array.isArray(prev)) return [];
+        return prev.map((r: any) =>
+          r._id === payload.requestId
+            ? { ...r, status: payload.status, mission: payload.mission ?? r.mission }
+            : r
+        );
+      });
+    });
+
+    return () => {
+      socket.off("request-updated");
+    };
+  }, []);
+
+  const fetchMyRequests = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        "http://localhost:5000/api/emergency-requests/my-requests",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      
+      // 🌟 FIX: Handle both object envelopes and flat arrays transparently
+      if (data && Array.isArray(data.data)) {
+        setRequests(data.data);
+      } else if (Array.isArray(data)) {
+        setRequests(data);
+      } else {
+        setRequests([]); // Fallback array to avoid structural crash rules
+      }
+    } catch (err) {
+      console.error(err);
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:5000/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setProfile(data.user);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Derive tracking items safely with structural fallback check rules
+  const requestArray = Array.isArray(requests) ? requests : [];
+  const latest = requestArray[0];
   
   return (
     <div
       className="relative min-h-screen w-full bg-cover bg-center bg-no-repeat font-sans"
       style={{ backgroundImage: `url(${bg})` }}
     >
-      {/* Gentle overlay layer to protect underlying contrast */}
       <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px]" />
 
       <div className="relative z-10 flex min-h-screen">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
         <main className="flex-1 px-8 py-6 overflow-x-hidden">
-          {/* Header Action Row */}
           <header className="mb-8 flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-black text-white tracking-tight drop-shadow-sm">Assistance Requests</h1>
@@ -101,7 +174,6 @@ export default function RequestPage() {
             </div>
           </header>
 
-          {/* Grid Layout Container */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-start">
             
             {/* Top Left Status Hero */}
@@ -111,17 +183,16 @@ export default function RequestPage() {
               </h2>
               <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-full border-2 border-cyan-400 bg-black/40 shadow-[0_0_30px_rgba(34,211,238,0.3)]">
-                  {/* Fixed visibility by giving explicit sizing and crisp color classes */}
                   <div className="text-cyan-400 flex items-center justify-center">
                     <DroneIcon className="h-14 w-14 text-cyan-400 fill-cyan-400/20" />
                   </div>
                 </div>
                 <div className="flex-1 w-full space-y-3 text-base">
                   {[
-                    ["Mission Type", "Search & Rescue", "text-cyan-300 font-extrabold"],
-                    ["Start Time", "14:30", "text-zinc-100 font-bold"],
-                    ["Location", "Forest, Oran Algeria", "text-zinc-100 font-semibold"],
-                    ["Mission ID", "#24", "text-amber-400 font-black tracking-wider"],
+                    ["Mission Type", latest?.type ?? "—", "text-cyan-300 font-extrabold"],
+                    ["Start Time",   latest?.createdAt ? new Date(latest.createdAt).toLocaleTimeString() : "—", "text-zinc-100 font-bold"],
+                    ["Location",     latest?.location?.name ?? "—", "text-zinc-100 font-semibold"],
+                    ["Mission ID",   latest?._id ? `#${latest._id.slice(-4)}` : "—", "text-amber-400 font-black tracking-wider"],
                   ].map(([k, v, colorClass]) => (
                     <div
                       key={k}
@@ -143,22 +214,26 @@ export default function RequestPage() {
                   <User className="h-6 w-6 text-cyan-300" />
                 </div>
                 <div>
-                  <div className="font-black text-lg tracking-wide text-white">SARAH BENALI</div>
-                  <span className="text-xs text-cyan-400 font-black uppercase tracking-wider">Field Operator</span>
+                  <div className="font-black text-lg tracking-wide text-white">
+                    {profile?.name ?? "…"}
+                  </div>
+                  <span className="text-xs text-cyan-400 font-black uppercase tracking-wider">
+                    {profile?.role ?? "User"}
+                  </span>
                 </div>
               </div>
               <div className="space-y-3 text-sm text-zinc-100">
                 <div className="flex items-center gap-3.5 bg-white/5 p-3 rounded-xl border border-white/5">
                   <MapPin className="h-5 w-5 text-cyan-400 shrink-0" />
-                  <span className="font-bold">Oran, Algeria</span>
+                  <span className="font-bold">{profile?.location ?? "—"}</span>
                 </div>
                 <div className="flex items-center gap-3.5 bg-white/5 p-3 rounded-xl border border-white/5">
                   <Phone className="h-5 w-5 text-cyan-400 shrink-0" />
-                  <span className="font-black tracking-wide">+213 555 987 654</span>
+                  <span className="font-black tracking-wide">{profile?.phone ?? "—"}</span>
                 </div>
                 <div className="flex items-center gap-3.5 bg-white/5 p-3 rounded-xl border border-white/5">
                   <Mail className="h-5 w-5 text-cyan-400 shrink-0" />
-                  <span className="font-bold truncate">Sarah.Ali@gmail.com</span>
+                  <span className="font-bold truncate">{profile?.email ?? "—"}</span>
                 </div>
               </div>
             </Glass>
@@ -166,19 +241,45 @@ export default function RequestPage() {
             {/* Request List Log */}
             <Glass className="p-6">
               <h2 className="mb-5 text-xs font-black uppercase tracking-widest text-zinc-300">My Requests</h2>
-              <ul className="space-y-3">
-                {requests.map((r) => (
-                  <li
-                    key={r.id}
-                    className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 hover:bg-white/10 transition-all duration-200"
-                  >
-                    <div>
-                      <div className="text-base font-black text-white">{r.id}</div>
-                      <div className="text-xs text-zinc-300 font-bold mt-0.5">{r.date}</div>
-                    </div>
-                    <StatusBadge variant={r.status}>{r.label}</StatusBadge>
-                  </li>
-                ))}
+              <ul className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                {requestArray.length === 0 && !loading && (
+                  <li className="text-sm text-zinc-400 font-semibold text-center py-4">No requests found.</li>
+                )}
+                {requestArray.map((r) => {
+                  // 🌟 FIX: Dynamic Urgency Mapping using exact requested colors
+                  const urgencyVal = r.urgency ? r.urgency.toLowerCase() : "normal";
+                  const urgencyStyles: Record<string, string> = {
+                    critical: "text-red-200 bg-red-950 border border-red-900", // Dark Red
+                    high:     "text-white bg-red-600 border border-red-700",    // Red 600
+                    medium:   "text-amber-400 bg-amber-500/10 border border-amber-500/20",
+                    normal:   "text-zinc-400 bg-zinc-800/40 border border-zinc-700/30",
+                  };
+                  const currentUrgencyStyle = urgencyStyles[urgencyVal] || urgencyStyles.normal;
+
+                  return (
+                    <li
+                      key={r._id}
+                      className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 hover:bg-white/10 transition-all duration-200"
+                    >
+                      <div>
+                        <div className="text-base font-black text-white">
+                          {r._id ? `#${r._id.slice(-4)}` : "—"}
+                        </div>
+                        <div className="text-xs text-zinc-300 font-bold mt-0.5">
+                          {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—"}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {/* Dynamic Urgency Badge component layout view */}
+                        <span className={`inline-block px-2 py-0.5 text-[10px] font-black rounded uppercase tracking-wider ${currentUrgencyStyle}`}>
+                          {r.urgency || "Normal"}
+                        </span>
+                        <StatusBadge variant={r.status}>{r.status}</StatusBadge>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </Glass>
 
@@ -187,11 +288,11 @@ export default function RequestPage() {
               <h2 className="mb-5 text-xs font-black uppercase tracking-widest text-zinc-300">Last Request Summary</h2>
               <div className="space-y-3 text-base">
                 {[
-                  ["Mission Type", "Search & Rescue", "text-cyan-300 font-extrabold"],
-                  ["Target Count", "1 Person", "text-zinc-100 font-bold"],
-                  ["Request Time", "14:30", "text-zinc-100 font-bold"],
-                  ["Location", "Zone 4-B Area", "text-zinc-100 font-semibold"],
-                  ["Drone Assigned", "DR-8", "text-amber-400 font-black"],
+                  ["Mission Type",    latest?.type ?? "—",                             "text-cyan-300 font-extrabold"],
+                  ["Urgency",         latest?.urgency ?? "—",                          "text-zinc-100 font-bold"],
+                  ["Request Time",    latest?.createdAt ? new Date(latest.createdAt).toLocaleTimeString() : "—", "text-zinc-100 font-bold"],
+                  ["Location",        latest?.location?.name ?? "—",                   "text-zinc-100 font-semibold"],
+                  ["Drone Assigned",  latest?.mission?.drone?.name ?? "Not yet",       "text-amber-400 font-black"],
                 ].map(([k, v, colorClass]) => (
                   <div
                     key={k}
@@ -207,12 +308,14 @@ export default function RequestPage() {
             {/* Emergency Contact Block */}
             <Glass className="p-6">
               <h2 className="mb-4 text-xs font-black uppercase tracking-widest text-zinc-300">Emergency Contact</h2>
-              <div className="text-xl font-black text-white">Ahmed Ali</div>
+              <div className="text-xl font-black text-white">
+                {profile?.emergencyContact?.name ?? "—"}
+              </div>
               <div className="text-xs text-zinc-400 uppercase tracking-widest font-black mt-0.5">Primary Liaison Contact</div>
               <div className="my-4 h-px bg-white/10" />
               <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 p-3 rounded-xl text-base text-red-300 font-black shadow-[0_0_15px_rgba(239,68,68,0.1)]">
                 <Phone className="h-5 w-5 shrink-0 text-red-400" />
-                <span>+213 555 987 654</span>
+                <span>{profile?.emergencyContact?.phone ?? "—"}</span>
               </div>
             </Glass>
 
@@ -222,12 +325,14 @@ export default function RequestPage() {
               <div className="space-y-4 text-base">
                 <div className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-4 py-3.5">
                   <span className="text-zinc-200 font-bold">System Authorization Decision</span>
-                  <StatusBadge variant="accepted">accepted</StatusBadge>
+                  <StatusBadge variant={latest?.status}>
+                    {latest?.status ?? "pending"}
+                  </StatusBadge>
                 </div>
                 <div className="rounded-xl bg-white/5 border border-white/10 p-4">
                   <div className="mb-2 text-zinc-300 font-black text-xs uppercase tracking-wider">Resolution Objective / Reason</div>
                   <div className="text-sm text-zinc-100 leading-relaxed font-semibold">
-                    Mission completed successfully. Target located inside the forest perimeter grid coordinate matrices and immediate extraction assistance was dispatched.
+                    {latest?.adminNote || "No admin note yet."}
                   </div>
                 </div>
               </div>
@@ -254,7 +359,6 @@ export default function RequestPage() {
             </Glass>
           </div>
 
-          {/* Lower Global Interaction Trigger Link */}
           <div className="mt-8 flex justify-end">
             <Link to="/request-assistance" className="inline-block">
               <button className="rounded-xl bg-cyan-500 hover:bg-cyan-400 active:scale-95 px-10 py-3.5 text-sm font-black uppercase tracking-wider text-white transition-all shadow-lg shadow-cyan-500/20 border border-cyan-400/30">

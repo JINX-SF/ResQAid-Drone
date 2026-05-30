@@ -7,7 +7,13 @@ const MissionSchema = new mongoose.Schema(
     type:  {
       type: String,
       enum: ["SAR", "logistics", "oilgas", "industrial", "security"],
-      default: "general",
+       default: "SAR",
+      set: function (value) {
+    if (typeof value === 'string' && value.toLowerCase() === 'sar') {
+      return 'SAR';
+    }
+    return value;
+  },
     },
 
   status: {
@@ -18,7 +24,7 @@ const MissionSchema = new mongoose.Schema(
     "completed",
     "disabled",
   ],
-  default: "pending",
+  default: "assigned",
 },
 
 isDisabled: {
