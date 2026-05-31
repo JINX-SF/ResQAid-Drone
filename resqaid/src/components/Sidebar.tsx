@@ -30,6 +30,8 @@ const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
     : [
         { icon: Siren, label: "Emergency Request", link: "/request-assistance" },
         { icon: CheckSquare, label: "Requests Log", link: "/requestpage" },
+        // Added user missions item utilizing the identical 'Target' icon
+        { icon: Target, label: "Missions", link: "/usersmission" },
         // 🌟 PLACED LAST: Regular User Profile Link
         { icon: User, label: "Profile", link: "/profile" },
       ];
