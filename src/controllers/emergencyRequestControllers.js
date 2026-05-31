@@ -125,6 +125,20 @@ exports.createRequest = async (req, res, next) => {
       },
       status: "pending",
     });
+
+    // 🚨 EMIT SOCKET EVENT TO ALL ADMINS when urgency is Critical or High
+    const io = req.app.get("io");
+    if (io && (request.urgency === "Critical" || request.urgency === "High")) {
+      io.emit("critical-request", {
+        _id:         request._id,
+        type:        request.type,
+        urgency:     request.urgency,
+        description: request.description,
+        location:    request.location,
+        createdAt:   request.createdAt,
+      });
+    }
+
     res.status(201).json({ success: true, data: request });
   } catch (err) {
     next(err);
@@ -142,7 +156,6 @@ exports.getRequests = async (req, res, next) => {
   }
 };
 
-// 🌟 UNIFIED AND CORRECTED GETMYREQUESTS ROUTE
 exports.getMyRequests = async (req, res, next) => {
   try {
     const userId = req.user?._id || req.user?.id || req.user;
@@ -157,7 +170,6 @@ exports.getMyRequests = async (req, res, next) => {
         },
       });
 
-    // Wrapped inside data property envelope to match the UI expectations cleanly
     res.json({ success: true, data: requests });
   } catch (err) {
     next(err);

@@ -16,25 +16,25 @@ const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
   const user = rawUser ? JSON.parse(rawUser) : null;
   const userRole = user?.role ? user.role.toLowerCase() : "user";
 
-const navItems = userRole === "admin"
-  ? [
-      { icon: Siren, label: "Emergency Requests", link: "/EmergencyRequestsPage" }, 
-      { icon: Drone, label: "Drone", link: "/dronespage", type: "drone" },
-      { icon: Users, label: "Users", link: "/userspage" },
-      { icon: Sliders, label: "Control panel", link: "/controle" },
-      { icon: LayoutDashboard, label: "Dashboard", link: "/dashboard" },
-      { icon: Target, label: "Missions", link: "/missionsPage", type: "mission" },
-      // 🛠️ FIXED: Properties updated to match your .map layout syntax (label & link)
-      { icon: FileText, label: "Mission Reports", link: "/mission-reports" }, 
-      // ⭐ PLACED LAST: Admin Profile Link
-      { icon: User, label: "Profile", link: "/profile" }
-    ]
-  : [
-      { icon: Siren, label: "Emergency Request", link: "/request-assistance" },
-      { icon: CheckSquare, label: "Requests Log", link: "/requestpage" },
-      // ⭐ PLACED LAST: Regular User Profile Link
-      { icon: User, label: "Profile", link: "/profile" },
-    ];
+ const navItems = userRole === "admin"
+    ? [
+        { icon: Siren, label: "Emergency Requests", link: "/EmergencyRequestsPage" }, 
+        { icon: Drone, label: "Drone", link: "/dronespage", type: "drone" },
+        { icon: Users, label: "Users", link: "/userspage" },
+        { icon: Sliders, label: "Control panel", link: "/controle" },
+        { icon: LayoutDashboard, label: "Dashboard", link: "/dashboard" },
+        { icon: Target, label: "Missions", link: "/missionsPage", type: "mission" },
+        { icon: FileText, label: "Mission Reports", link: "/mission-reports" }, 
+        // ⭐ PLACED LAST: Admin Profile Link
+        { icon: User, label: "Profile", link: "/profile" }
+      ]
+    : [
+        { icon: Siren, label: "Emergency Request", link: "/request-assistance" },
+        { icon: CheckSquare, label: "Requests Log", link: "/requestpage" },
+        { icon: Target, label: "Missions", link: "/usersmission" },
+        // ⭐ PLACED LAST: Regular User Profile Link
+        { icon: User, label: "Profile", link: "/profile" },
+      ];
 
   return (
     <aside
