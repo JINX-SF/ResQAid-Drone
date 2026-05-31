@@ -148,7 +148,7 @@ export default function MissionReportsDirectory() {
             </button>
           </div>
 
-          {/* ── Table Header Definition Row ── */}
+          {/* ── Tableee Header Definition Row ── */}
           <div className="grid grid-cols-[1.2fr_1.1fr_0.8fr_0.9fr_1fr] items-center gap-6 border-b border-white/10 bg-black/30 px-8 py-5 text-sm font-bold uppercase tracking-[0.18em] text-white/80">
             <div>Mission Info</div>
             <div>Assigned UAV Asset</div>
