@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Check, CircleUser, Camera, X } from "lucide-react";
 import rescueBg from "@/assets/rescue-bg.jpg";
 import droneHud from "@/assets/drone-hud.png";
@@ -59,17 +59,20 @@ const Infos = () => {
         setBirthday(user.birthday ? user.birthday.split("T")[0] : "");
         setGender(user.gender || "");
         setPhone(user.phone || "");
+        setPhone2(user.phone2 || "");
         setLocation(user.location || "");
         setContactName(user.emergencyContact?.name || "");
         setContactPhone(user.emergencyContact?.phone || "");
         setBloodType(user.medicalInfo?.bloodType || "");
         setAllergies(user.medicalInfo?.allergies || "");
+        setHeight(user.height || "");
+        setWeight(user.weight || "");
         
         if (user.avatarUrl) {
           setAvatarPreview(user.avatarUrl);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching user payload profile on mount:", err);
       }
     };
     fetchUser();
@@ -111,7 +114,6 @@ const Infos = () => {
     if (!videoRef.current) return;
 
     setIsProcessingFace(true);
-
     const canvas = document.createElement("canvas");
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
@@ -181,7 +183,7 @@ const Infos = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. Strict Requirement Enforcement (Excluding avatar, phone2, and allergies)
+    // 1. Strict Requirement Enforcement
     if (!birthday || !gender || !phone || !location || !contactName || !contactPhone || !bloodType || !height || !weight) {
       alert("❌ Please fill out all required profile information fields.");
       return;
@@ -208,33 +210,58 @@ const Infos = () => {
       return;
     }
 
-    try {
-      const formData = new FormData();
-      formData.append("birthday", birthday);
-      formData.append("gender", gender);
-      formData.append("phone", phone);
-      formData.append("phone2", phone2);
-      formData.append("location", location);
-      formData.append("emergencyContact[name]", contactName);
-      formData.append("emergencyContact[phone]", contactPhone);
-      formData.append("medicalInfo[bloodType]", bloodType);
-      formData.append("medicalInfo[allergies]", allergies);
-      formData.append("height", height);
-      formData.append("weight", weight);
-      
-      if (avatar) {
-        formData.append("avatar", avatar);
-      }
+// Inside your Infos.tsx handleSubmit function:
+try {
+  const formData = new FormData();
+  formData.append("birthday", birthday);
+  formData.append("gender", gender);
+  formData.append("phone", phone);
+  formData.append("phone2", phone2);
+  formData.append("location", location);
+  formData.append("height", height);
+  formData.append("weight", weight);
+  
+  formData.append("emergencyContact", JSON.stringify({
+    name: contactName.trim(),
+    phone: contactPhone
+  }));
 
-      await API.patch("/auth/profile", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+  formData.append("medicalInfo", JSON.stringify({
+    bloodType: bloodType,
+    allergies: allergies
+  }));
 
-      alert("Profile updated successfully ✅");
-      navigate("/profile");
-    } catch (err) {
-      alert("Failed to save profile");
-    }
+  if (avatar) {
+    formData.append("avatar", avatar);
+  }
+
+  // 🧪 DEBUG LOG 1: Verify exactly what the frontend is shipping out
+  console.log("--- FRONTEND SUBMITTING FORM DATA ---");
+  for (let [key, value] of formData.entries()) {
+    console.log(`${key}:`, value);
+  }
+
+  const response = await API.patch("/auth/profile", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+  // 🧪 DEBUG LOG 2: Verify exactly what the backend responded with
+  console.log("--- BACKEND RESPONSE RECEIVED ---", response.data);
+
+  if (response.data?.user) {
+    localStorage.setItem("user", JSON.stringify(response.data.user));
+    console.log("Local storage synced with:", localStorage.getItem("user"));
+  }
+
+  alert("Profile updated successfully ✅");
+  navigate("/profile");
+} catch (err: any) {
+  // 🧪 DEBUG LOG 3: Detailed crash reporting
+  console.error("--- NETWORK ACTION CRASHED ---");
+  console.error("Status Code:", err.response?.status);
+  console.error("Server Error Payload:", err.response?.data);
+  alert(err.response?.data?.message || "Failed to save profile information.");
+}
   };
 
   return (
@@ -250,7 +277,7 @@ const Infos = () => {
         
         {/* Left Form Block Container */}
         <div className="flex w-full flex-col justify-center px-8 py-3 pb-7 md:w-1/2 md:px-12">
-           
+            
            {/* Face Verification Avatar Component */}
            <div className="flex flex-col items-center mb-4">
               {avatarPreview ? (
@@ -323,15 +350,14 @@ const Infos = () => {
               </div>
             </div>
           )}
-
           <form onSubmit={handleSubmit}>
-             <input
+              <input
                 type="date"
                 value={birthday}
                 onChange={(e) => setBirthday(e.target.value)}
                 placeholder="Birth day date"
                 required
-                className="w-[58%] inline sm:mr-5 sm:w-[45%] rounded-full border px-5 py-3 text-base"
+                className="w-[58%] inline sm:mr-5 sm:w-[45%] rounded-full border px-5 py-3 text-base text-black"
               />
 
               <div className="w-[39%] inline-block relative">
@@ -352,7 +378,7 @@ const Infos = () => {
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                 placeholder="Phone Number (+213)"
                 required
-                className="w-full mt-2 rounded-full border px-5 py-2.5 text-base"
+                className="w-full mt-2 rounded-full border px-5 py-2.5 text-base text-black"
               /> 
 
               {/* Optional Field */}
@@ -360,7 +386,7 @@ const Infos = () => {
                 value={phone2}
                 onChange={(e) => setPhone2(e.target.value.replace(/\D/g, "").slice(0, 10))}
                 placeholder="Phone Number2 (+213) (Optional)"
-                className="w-full mt-2 rounded-full border px-5 py-2.5 text-base"
+                className="w-full mt-2 rounded-full border px-5 py-2.5 text-base text-black"
               /> 
 
               <input
@@ -368,7 +394,7 @@ const Infos = () => {
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Address"
                 required
-                className="w-full mt-2 rounded-full border px-5 py-2.5 text-base"
+                className="w-full mt-2 rounded-full border px-5 py-2.5 text-base text-black"
               />
           
                {/* --- EMERGENCY CONTACT SECTION --- */}
@@ -444,7 +470,7 @@ const Infos = () => {
                  Your data is private and used only during emergency operations.
                </label>
                <button type="submit" className="w-full rounded-full bg-primary py-3.5 text-lg font-bold text-primary-foreground transition-colors hover:bg-accent">
-                  Save Profile
+                 Save Profile
                </button>
           </form>
         </div>

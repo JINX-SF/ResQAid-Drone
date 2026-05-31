@@ -16,29 +16,30 @@ export function CriticalAlertPopup() {
   const navigate = useNavigate();
   const [alerts, setAlerts] = useState<CriticalRequest[]>([]);
 
-  useEffect(() => {
-    const handler = (data: CriticalRequest) => {
-      setAlerts((prev) => [data, ...prev]);
+  const rawUser = localStorage.getItem("user");
+  const user = rawUser ? JSON.parse(rawUser) : null;
+  const userRole = user?.role ? user.role.toLowerCase() : "user";
+  const isAdmin = userRole === "admin";
 
-      // Play alert sound
-      try {
-        const ctx = new AudioContext();
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        oscillator.type = "square";
-        oscillator.frequency.setValueAtTime(880, ctx.currentTime);
-        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.8);
-      } catch (_) {}
+  // 🧪 DIAGNOSTIC LOG 1: Verify Role Parsing
+  console.log("Current Application User Role:", userRole, "| Is Admin?", isAdmin);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    // 🧪 DIAGNOSTIC LOG 2: Verify Socket setup status
+    console.log("Admin verified! Initializing 'critical-request' socket channel...");
+
+    const handler = (data: CriticalRequest) => {
+      console.log("🔥 EMERGENCY LIVE EVENT RECEIVED: ", data);
+      setAlerts((prev) => [data, ...prev]);
     };
 
     socket.on("critical-request", handler);
-    return () => { socket.off("critical-request", handler); };
-  }, []);
+    return () => {
+      socket.off("critical-request", handler);
+    };
+  }, [isAdmin]);
 
   const dismiss = (id: string) => {
     setAlerts((prev) => prev.filter((a) => a._id !== id));
@@ -48,8 +49,7 @@ export function CriticalAlertPopup() {
     dismiss(id);
     navigate(`/requests/${id}/intelligence`);
   };
-
-  if (alerts.length === 0) return null;
+  if (!isAdmin || alerts.length === 0) return null;
 
   return (
     <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-3 max-w-sm w-full">
@@ -108,7 +108,7 @@ export function CriticalAlertPopup() {
               <div className="flex justify-between mb-1">
                 <span className="text-gray-400">Location</span>
                 <span className="text-white font-semibold">
-                  {alert.location?.name || `${alert.location?.lat}, ${alert.location?.lng}`}
+                  {alert.location?.name || ` ${alert.location?.lat}, ${alert.location?.lng}`}
                 </span>
               </div>
               {alert.description && (
