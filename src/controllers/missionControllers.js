@@ -13,22 +13,27 @@ const allowedNext = {
 exports.createMission = async (req, res, next) => {
   try {
     console.log("MISSION STATUS RECEIVED:", req.body.status);
+    console.log("📥 BODY RECEIVED:", JSON.stringify(req.body, null, 2));
 
-    console.log("📥 BODY RECEIVED:");
-console.log(JSON.stringify(req.body, null, 2));
-
-console.log("📥 BODY RECEIVED:");
-console.log(JSON.stringify(req.body, null, 2));
+    // 1. First, create the mission with the initial body payload
     const mission = await Mission.create(req.body);
-console.log("💾 SAVED MISSION:");
-console.log(JSON.stringify(mission, null, 2));
-    // If the user already picked a drone (from Mission Intelligence),
-    // use that drone — do NOT auto-override with a different one.
+    console.log("💾 SAVED INITIAL MISSION:", JSON.stringify(mission, null, 2));
+
+    // 2. Scenario: User picked a specific drone manually (from Mission Intelligence)
     if (req.body.drone) {
       const pickedDrone = await Drone.findById(req.body.drone);
       if (pickedDrone) {
         mission.drone = pickedDrone._id;
         mission.status = "assigned";
+
+        // FIX: Extract drone location coordinates (fallback to homeBase or location schema)
+        const droneLat = pickedDrone.location?.lat || pickedDrone.homeBase?.lat;
+        const droneLng = pickedDrone.location?.lng || pickedDrone.homeBase?.lng;
+
+        if (droneLat && droneLng) {
+          mission.departureLocation = { lat: droneLat, lng: droneLng };
+        }
+
         await mission.save();
 
         pickedDrone.status = "assigned";
@@ -36,47 +41,48 @@ console.log(JSON.stringify(mission, null, 2));
         pickedDrone.assignedAt = new Date();
         await pickedDrone.save();
 
-        console.log(`🚁 Drone ${pickedDrone.name} assigned to mission (user picked)`);
+        console.log(`🚁 Drone ${pickedDrone.name} assigned. Departure location updated to drone position.`);
       }
-    } else {
-  // Auto assign ONLY if mission is assigned or in_progress
-  if (
-    mission.status === "assigned" ||
-    mission.status === "in_progress" ||
-    mission.status === "active"
-  ) {
-    const bestDrone = await Drone.findOne({
-      status: "idle",
-      battery: { $gte: 40 },
-      isDisabled: { $ne: true },
-    }).sort({ battery: -1 });
+    } 
+    // 3. Scenario: Auto assign fallback if no drone was explicitly provided
+    else {
+      if (
+        mission.status === "assigned" ||
+        mission.status === "in_progress" ||
+        mission.status === "active"
+      ) {
+        const bestDrone = await Drone.findOne({
+          status: "idle",
+          battery: { $gte: 40 },
+          isDisabled: { $ne: true },
+        }).sort({ battery: -1 });
 
-    if (bestDrone) {
-      mission.drone = bestDrone._id;
-      await mission.save();
+        if (bestDrone) {
+          mission.drone = bestDrone._id;
+          
+          // FIX: Set departure coordinates to this auto-assigned drone's coordinates
+          const droneLat = bestDrone.location?.lat || bestDrone.homeBase?.lat;
+          const droneLng = bestDrone.location?.lng || bestDrone.homeBase?.lng;
 
-      bestDrone.status =
-        mission.status === "in_progress"
-          ? "in_mission"
-          : "assigned";
+          if (droneLat && droneLng) {
+            mission.departureLocation = { lat: droneLat, lng: droneLng };
+          }
 
-      bestDrone.assignedMissionName = mission.title;
-      bestDrone.assignedAt = new Date();
+          await mission.save();
 
-      await bestDrone.save();
+          bestDrone.status = mission.status === "in_progress" ? "in_mission" : "assigned";
+          bestDrone.assignedMissionName = mission.title;
+          bestDrone.assignedAt = new Date();
+          await bestDrone.save();
 
-      console.log(
-        `🚁 Drone ${bestDrone.name} auto assigned to mission`
-      );
-    } else {
-      console.log("❌ No available drone found");
+          console.log(`🚁 Drone ${bestDrone.name} auto assigned. Departure location updated.`);
+        } else {
+          console.log("❌ No available drone found");
+        }
+      } else {
+        console.log("📝 Pending mission created without drone assignment");
+      }
     }
-  } else {
-    console.log(
-      "📝 Pending mission created without drone assignment"
-    );
-  }
-}
 
     const populated = await Mission.findById(mission._id).populate("drone");
     res.status(201).json({ success: true, data: populated });

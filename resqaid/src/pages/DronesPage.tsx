@@ -156,13 +156,16 @@ export default function DronesPage() {
   const [disableReason, setDisableReason] = useState("");
   const [otherReason, setOtherReason] = useState("");
 
-  // FIXED: All fields initialized as clean strings to prevent breaking inputs on negative numbers (-)
   const [form, setForm] = useState(getInitialFormState());
 
   const [open, setOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingDroneId, setEditingDroneId] = useState<string | null>(null);
-  const [drones, setDrones] = useState([]);
+  const [drones, setDrones] = useState<any[]>([]);
+  
+  // ─── Search State Extensions ──────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchField, setSearchField] = useState<"id" | "name">("id");
 
   useEffect(() => {
     const fetchDrones = async () => {
@@ -185,7 +188,6 @@ export default function DronesPage() {
 
   const handleAddDrone = async () => {
     try {
-      // FIXED: Convert all numeric string fields using parseFloat/Number cleanly before transmission
       const droneData = {
         name: form.name,
         type: form.type,
@@ -243,7 +245,6 @@ export default function DronesPage() {
   const handleEdit = (drone: any) => {
     setIsEditing(true);
     setEditingDroneId(drone._id);
-    // FIXED: Form state loaded with String wrappers so editing negative metrics functions cleanly
     setForm({
       name: drone.name || "",
       type: drone.type || "camera_quadcopter",
@@ -261,6 +262,18 @@ export default function DronesPage() {
     });
     setOpen(true);
   };
+
+  // ─── Dual Filter Logic ─────────────────────────────────────────────────────
+  const filteredDrones = drones.filter((drone) => {
+    const cleanQuery = searchQuery.toLowerCase().trim();
+    if (!cleanQuery) return true;
+
+    if (searchField === "id") {
+      return drone._id?.toLowerCase().includes(cleanQuery);
+    } else {
+      return drone.name?.toLowerCase().includes(cleanQuery);
+    }
+  });
 
   return (
     <div>
@@ -332,7 +345,6 @@ export default function DronesPage() {
                   Home Base
                 </h3>
                 <div className="space-y-3">
-                  {/* FIXED: Removed type="number" and immediate numeric parsing */}
                   <Field label="Latitude">
                     <input type="text" className={inputCls} value={form.baseLat} onChange={(e) => setForm({ ...form, baseLat: e.target.value })} />
                   </Field>
@@ -353,7 +365,6 @@ export default function DronesPage() {
                   Performance Specifications
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
-                  {/* FIXED: Removed type="number" and immediate numeric parsing */}
                   <Field label="Speed (m/s)">
                     <input className={inputCls} type="text" value={form.speed} onChange={(e) => setForm({ ...form, speed: e.target.value })} />
                   </Field>
@@ -376,7 +387,6 @@ export default function DronesPage() {
                   Current Location
                 </h3>
                 <div className="grid grid-cols-3 gap-3">
-                  {/* FIXED: Removed immediate numeric parsing */}
                   <Field label="Latitude">
                     <input type="text" className={inputCls} value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} />
                   </Field>
@@ -411,8 +421,41 @@ export default function DronesPage() {
 
       <AppShell>
         <Glass className="overflow-hidden">
-          <div className="flex items-center justify-between bg-black/40 px-6 py-4">
-            <h2 className="text-2xl font-semibold text-white/80">All drones</h2>
+          {/* ── Header Toolbar Layout ── */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between bg-black/40 px-6 py-4 gap-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1 max-w-2xl">
+              <h2 className="text-2xl font-semibold text-white/80 whitespace-nowrap">All drones</h2>
+              
+              <div className="flex items-center gap-2 flex-1 w-full">
+                {/* Search Target Mode Selector */}
+                <select
+  value={searchField}
+  onChange={(e) => {
+    setSearchField(e.target.value as "id" | "name");
+    setSearchQuery(""); // Auto-clear to prevent jarring view breaks
+  }}
+  className="px-3 py-2 text-sm rounded-lg border border-white/20 text-white/90 bg-white/10 backdrop-blur-md hover:bg-white/15 focus:outline-none focus:border-green-400/60 transition cursor-pointer"
+>
+  <option value="id" className="bg-[#161b26] text-white">Search ID</option>
+  <option value="name" className="bg-[#161b26] text-white">Search Name</option>
+</select>
+
+                {/* Combined Search Bar */}
+                <div className="relative flex-1">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <Search className="h-4 w-4 text-white/40" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder={searchField === "id" ? "Enter drone ID..." : "Enter drone name..."}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-green-400/60 focus:bg-white/10 transition"
+                  />
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={() => {
                 setIsEditing(false);
@@ -420,14 +463,14 @@ export default function DronesPage() {
                 setForm(getInitialFormState());
                 setOpen(true);
               }}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 self-start xl:self-auto"
             >
               + Add drone
             </button>
           </div>
 
           <div className="grid grid-cols-[0.6fr_1.5fr_1fr_0.8fr_1fr_1.4fr] items-center gap-6 border-b border-white/10 bg-black/30 px-8 py-5 text-sm font-bold uppercase tracking-[0.18em] text-white/80">
-            <div>ID</div>
+            <div>ID / Name</div>
             <div>Type</div>
             <div>Status</div>
             <div>Battery</div>
@@ -436,58 +479,68 @@ export default function DronesPage() {
           </div>
 
           <ul className="divide-y text-white/70 divide-white/5">
-            {drones?.map((d) => (
-              <li
-                key={d._id}
-                className="grid grid-cols-[0.6fr_1.5fr_1fr_0.8fr_1fr_1.4fr] items-center gap-6 px-8 py-6 border-b border-white/5 text-base text-white/80 transition-all duration-300 hover:bg-white/[0.04]"
-              >
-                <div className="font-semibold text-base text-white/90">{d._id ? d._id.slice(-5) : "N/A"}</div>
+            {filteredDrones.length > 0 ? (
+              filteredDrones.map((d) => (
+                <li
+                  key={d._id}
+                  className="grid grid-cols-[0.6fr_1.5fr_1fr_0.8fr_1fr_1.4fr] items-center gap-6 px-8 py-6 border-b border-white/5 text-base text-white/80 transition-all duration-300 hover:bg-white/[0.04]"
+                >
+                  {/* Displays both ID snippet and Name context cleanly */}
+                  <div>
+                    <div className="font-semibold text-base text-white/90">{d._id ? d._id.slice(-5) : "N/A"}</div>
+                    {d.name && <div className="text-xs text-white/40 font-medium truncate max-w-[120px]">{d.name}</div>}
+                  </div>
 
-                <div>
-                  <TypeCell type={d.type} />
-                </div>
+                  <div>
+                    <TypeCell type={d.type} />
+                  </div>
 
-                <div className="flex flex-col items-start gap-1">
-                  <StatusPill status={(d.status || "idle").toLowerCase() as Status} />
-                  {d.status === "assigned" && d.assignedMissionName && (
-                    <span className="text-sm text-yellow-300/90 font-semibold block">📋 {d.assignedMissionName}</span>
-                  )}
-                  {d.status === "assigned" && d.assignedAt && (
-                    <span className="text-xs text-white/40 block">
-                      {new Date(d.assignedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  )}
-                </div>
+                  <div className="flex flex-col items-start gap-1">
+                    <StatusPill status={(d.status || "idle").toLowerCase() as Status} />
+                    {d.status === "assigned" && d.assignedMissionName && (
+                      <span className="text-sm text-yellow-300/90 font-semibold block">📋 {d.assignedMissionName}</span>
+                    )}
+                    {d.status === "assigned" && d.assignedAt && (
+                      <span className="text-xs text-white/40 block">
+                        {new Date(d.assignedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
 
-                <div className="font-semibold text-base text-white/90">{d.battery}%</div>
+                  <div className="font-semibold text-base text-white/90">{d.battery}%</div>
 
-                <div className="flex items-center gap-2 text-base font-medium text-white/90">
-                  <MapPin className="h-5 w-5 text-emerald-400 shrink-0" />
-                  <span className="truncate">{d.location ? `${d.location.lat}, ${d.location.lng}` : "No location"}</span>
-                </div>
+                  <div className="flex items-center gap-2 text-base font-medium text-white/90">
+                    <MapPin className="h-5 w-5 text-emerald-400 shrink-0" />
+                    <span className="truncate">{d.location ? `${d.location.lat}, ${d.location.lng}` : "No location"}</span>
+                  </div>
 
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => { setSelectedDrone(d); setShowDisableModal(true); }}
-                    className="rounded-xl bg-red-500/90 px-4 py-2.5 text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:bg-red-400 active:scale-95"
-                  >
-                    Disable
-                  </button>
-                  <button
-                    onClick={() => handleEdit(d)}
-                    className="rounded-xl bg-green-500/90 px-4 py-2.5 text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:bg-green-400 active:scale-95 flex items-center gap-1"
-                  >
-                    <Pencil className="h-4 w-4" /> Edit
-                  </button>
-                  <button
-                    onClick={() => navigate(`/drones/${d._id}/history`)}
-                    className="rounded-xl bg-blue-500/90 px-4 py-2.5 text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:bg-blue-400 active:scale-95"
-                  >
-                    History
-                  </button>
-                </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => { setSelectedDrone(d); setShowDisableModal(true); }}
+                      className="rounded-xl bg-red-500/90 px-4 py-2.5 text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:bg-red-400 active:scale-95"
+                    >
+                      Disable
+                    </button>
+                    <button
+                      onClick={() => handleEdit(d)}
+                      className="rounded-xl bg-green-500/90 px-4 py-2.5 text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:bg-green-400 active:scale-95 flex items-center gap-1"
+                    >
+                      <Pencil className="h-4 w-4" /> Edit
+                    </button>
+                    <button
+                      onClick={() => navigate(`/drones/${d._id}/history`)}
+                      className="rounded-xl bg-blue-500/90 px-4 py-2.5 text-sm font-bold text-white transition-all duration-300 hover:scale-105 hover:bg-blue-400 active:scale-95"
+                    >
+                      History
+                    </button>
+                  </div>
+                </li>
+              ))
+            ) : (
+              <li className="px-8 py-12 text-center text-white/40 text-base">
+                No matching fleet drones found for target criteria.
               </li>
-            ))}
+            )}
           </ul>
         </Glass>
 
@@ -553,7 +606,7 @@ export default function DronesPage() {
             </div>
           </div>
         )}
-      </AppShell>
+      </AppShell> 
     </div>
   );
 }

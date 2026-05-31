@@ -23,40 +23,55 @@ interface Props {
 
 const MissionMap = ({ selectedMission }: Props) => {
   const [dronePos, setDronePos] = useState<DronePos | null>(null);
-  const [target, setTarget]     = useState<Target | null>(null);
+  const [target, setTarget] = useState<Target | null>(null);
   const [route, setRoute] = useState<LatLng[]>([]);
 
   useEffect(() => {
-  socket.on("dronePosition", (data) => {
-    setDronePos(data);
-
-    setRoute((prev) => [
-      ...prev,
-      {
-        lat: data.lat,
-        lng: data.lng,
-      },
-    ]);
-  });
-
-  socket.on("missionUpdated", (data) => {
-    if (data.targetArea) {
-      setTarget(data.targetArea);
+    if (selectedMission?.targetArea) {
+      setTarget({
+        lat: selectedMission.targetArea.lat,
+        lng: selectedMission.targetArea.lng,
+      });
     }
-  });
+  }, [selectedMission]);
 
-  return () => {
-    socket.off("dronePosition");
-    socket.off("missionUpdated");
-  };
-}, []);
+  useEffect(() => {
+    socket.on("dronePosition", (data) => {
+      setDronePos(data);
+
+      setRoute((prev) => [
+        ...prev,
+        {
+          lat: data.lat,
+          lng: data.lng,
+        },
+      ]);
+    });
+
+    socket.on("missionUpdated", (data) => {
+      if (data.targetArea) {
+        setTarget(data.targetArea);
+      }
+    });
+
+    return () => {
+      socket.off("dronePosition");
+      socket.off("missionUpdated");
+    };
+  }, []);
 
   const dronePin: LatLng | null = dronePos
-    ? { lat: dronePos.lat, lng: dronePos.lng }
+    ? {
+        lat: dronePos.lat,
+        lng: dronePos.lng,
+      }
     : null;
 
   const targetPin: LatLng | null = target
-    ? { lat: target.lat, lng: target.lng }
+    ? {
+        lat: target.lat,
+        lng: target.lng,
+      }
     : null;
 
   return (
@@ -70,6 +85,7 @@ const MissionMap = ({ selectedMission }: Props) => {
         <LeafletMap
           dronePin={dronePin}
           targetPin={targetPin}
+          route={route}
           className="h-full w-full"
           interactive
         />
@@ -77,13 +93,18 @@ const MissionMap = ({ selectedMission }: Props) => {
 
       <div className="flex gap-4 text-[9px] text-muted-foreground justify-center">
         <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />Drone
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          Drone
         </span>
+
         <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />Target
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+          Target
         </span>
+
         <span className="flex items-center gap-1">
-          <span className="w-3 h-px bg-green-400/50" />Route
+          <span className="w-3 h-px bg-green-400" />
+          Route
         </span>
       </div>
     </div>

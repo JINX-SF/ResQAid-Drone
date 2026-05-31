@@ -457,12 +457,17 @@ const handleAssign = () => {
   if (!intel || intel.topDrones.length === 0) return;
 
   const selectedDrone = intel.topDrones[selectedDroneIdx];
+  // Get coordinates from homeBase or current location
+  const departureLat = selectedDrone.drone.homeBase?.lat || selectedDrone.drone.location?.lat;
+  const departureLng = selectedDrone.drone.homeBase?.lng || selectedDrone.drone.location?.lng;
 
   sessionStorage.setItem(
     "assignedDrone",
     JSON.stringify({
       droneId:   selectedDrone.drone._id,
       droneName: selectedDrone.drone.name,
+      lat: departureLat,
+      lng: departureLng,
     })
   );
 

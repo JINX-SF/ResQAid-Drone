@@ -16,6 +16,8 @@ import { Map, Camera, CheckCircle, Loader2 } from "lucide-react";
 import API from "@/api";
 
 const Controle = () => {
+
+  
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [mainView, setMainView] = useState<"camera" | "map">("camera");

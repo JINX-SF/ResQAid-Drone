@@ -35,6 +35,9 @@ import DisabledDronesPage from "./pages/DisabledDrones";
 import DisabledMissionsPage from "./pages/DisabledMissions"; 
 import Reset from "./pages/Reset";
 
+import MissionReportsDirectory from "@/pages/MissionReportsDirectory";
+import MissionReport from "@/pages/MissionReport";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -90,6 +93,9 @@ const App = () => (
 
           {/* CATCH-ALL NOT FOUND (Must always be last) */}
           <Route path="*" element={<NotFound />} />
+
+          <Route path="/mission-reports" element={<MissionReportsDirectory />} />
+<Route path="/mission-report/:id" element={<MissionReport />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

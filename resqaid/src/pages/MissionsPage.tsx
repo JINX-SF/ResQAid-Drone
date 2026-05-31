@@ -18,10 +18,14 @@ type Mission = {
   urgency: string;
   startTime: string;
   drone?: any;
+  
+  // ─── UPDATE THIS BLOCK ───
   departureLocation?: {
-  lat: number;
-  lng: number;
-};
+    name?: string;  // <-- Add this line
+    lat: number;
+    lng: number;
+  };
+  
   description?: string;
   dLocation?: { name?: string; lat: number; lng: number };
   targetArea?: { name?: string; lat: number; lng: number };
@@ -54,6 +58,9 @@ function StatusPill({ status }: { status: Status }) {
 
 // ─── Urgency Pill ─────────────────────────────────────────────────────────────
 function UrgencyPill({ urgency }: { urgency: string }) {
+
+  const location = useLocation();
+const params = new URLSearchParams(location.search);
   const key = (urgency || "").toLowerCase();
   const styles: any = {
     low:      "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30",
@@ -160,7 +167,6 @@ const URGENCY_OPTIONS = [
   { value: "Critical", label: "Critical" },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const inputCls =
   "w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md text-white placeholder-white/40 focus:outline-none focus:border-green-400/60 focus:bg-white/10 transition";
 
@@ -187,7 +193,10 @@ export default function MissionsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
 
-  // CHANGED: Numeric coordinate values are now tracked as string states so negative signs and decimal paths do not break while typing
+  // ─── New Added Search Controls ──────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchField, setSearchField] = useState<"id" | "title">("id");
+
   const [form, setForm] = useState({
     title: "", type: "SAR", status: "pending", payloadWeight: "0",
     urgency: "Low", startTime: "", locationName: "", lat: "", lng: "",
@@ -210,36 +219,59 @@ export default function MissionsPage() {
 
   useEffect(() => { fetchMissions(); }, []);
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const requestId = params.get("requestId");
-    const droneId = params.get("droneId");
-    if (!requestId) return;
-    const token = localStorage.getItem("token");
-    fetch(`http://localhost:5000/api/emergency-requests/${requestId}`, {
-      headers: { Authorization: `Bearer ${token}` },
+useEffect(() => {
+  const params = new URLSearchParams(location.search);
+  const requestId = params.get("requestId");
+  const droneId = params.get("droneId");
+  const droneLat = params.get("droneLat");
+  const droneLng = params.get("droneLng");
+  
+  if (!requestId) return;
+  const token = localStorage.getItem("token");
+  
+  fetch(`http://localhost:5000/api/emergency-requests/${requestId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      const req = data.data ?? data;
+      
+      // Extract raw lat/lng numerical points safely
+      const rawDepLat = Number(droneLat || req.fromLocation?.lat || req.location?.lat || 0);
+      const rawDepLng = Number(droneLng || req.fromLocation?.lng || req.location?.lng || 0);
+      const rawTarLat = Number(req.location?.lat || 0);
+      const rawTarLng = Number(req.location?.lng || 0);
+
+      // Clean up fallback names if they contain coordinate text strings
+      const cleanLocationName = req.fromLocation?.name && !req.fromLocation.name.startsWith("Lat:")
+        ? req.fromLocation.name 
+        : `Base Alpha`;
+
+      const cleanTargetName = req.location?.name && !req.location.name.startsWith("Lat:")
+        ? req.location.name 
+        : `Emergency Sector`;
+
+      setForm((prev) => ({
+        ...prev,
+        type: req.type || prev.type,
+        urgency: req.urgency || prev.urgency,
+        description: req.description || "",
+        status: "assigned",
+        droneId: droneId || "",
+        
+        // Form Inputs filled cleanly
+        locationName: cleanLocationName,
+        lat: rawDepLat.toFixed(6),
+        lng: rawDepLng.toFixed(6),
+        
+        targetArea: cleanTargetName,
+        targetLat: rawTarLat.toFixed(6),
+        targetLng: rawTarLng.toFixed(6),
+      }));
+      setOpen(true);
     })
-      .then((r) => r.json())
-      .then((data) => {
-        const req = data.data ?? data;
-        setForm((prev) => ({
-          ...prev,
-          type: req.type || prev.type,
-          urgency: req.urgency || prev.urgency,
-          description: req.description || "",
-          locationName: req.fromLocation?.name || req.location?.name || "",
-          lat: String(req.fromLocation?.lat || req.location?.lat || "0"),
-          lng: String(req.fromLocation?.lng || req.location?.lng || "0"),
-          targetArea: req.location?.name || "",
-          targetLat: String(req.location?.lat || "0"),
-          targetLng: String(req.location?.lng || "0"),
-          droneId: droneId || "",
-          status: "assigned",
-        }));
-        setOpen(true);
-      })
-      .catch((e) => console.error("Failed to prefill mission form:", e));
-  }, [location.search]);
+    .catch((e) => console.error("Failed to prefill mission form:", e));
+}, [location.search]);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("assignedDrone");
@@ -291,7 +323,6 @@ export default function MissionsPage() {
       if (!form.locationName.trim()) { alert("d location is required"); return; }
       if (!form.startTime) { alert("Mission start time is required"); return; }
       
-      // CHANGED: Parse the string values back into real floats right before backend submit/validation logic
       const departureLat = parseFloat(form.lat);
       const departureLng = parseFloat(form.lng);
       const destinationLat = parseFloat(form.targetLat);
@@ -301,25 +332,25 @@ export default function MissionsPage() {
       if (isNaN(departureLng) || departureLng < -180 || departureLng > 180) { alert("Longitude must be between -180 and 180"); return; }
 
       const missionData = {
-  title: form.title || form.type,
-  type: form.type,
-  status: form.status,
-  payloadWeight: Number(form.payloadWeight) || 0,
-  urgency: form.urgency,
-  startTime: form.startTime,
-  description: form.description,
-  drone: form.droneId || undefined,
+        title: form.title || form.type,
+        type: form.type,
+        status: form.status,
+        payloadWeight: Number(form.payloadWeight) || 0,
+        urgency: form.urgency,
+        startTime: form.startTime,
+        description: form.description,
+        drone: form.droneId || undefined,
 
-  departureLocation: {
-    lat: departureLat,
-    lng: departureLng,
-  },
+        departureLocation: {
+          lat: departureLat,
+          lng: departureLng,
+        },
 
-  targetArea: {
-    lat: destinationLat,
-    lng: destinationLng,
-  },
-};
+        targetArea: {
+          lat: destinationLat,
+          lng: destinationLng,
+        },
+      };
 
       if (isEditing && editingMissionId) {
         await API.put(`/missions/${editingMissionId}`, missionData);
@@ -328,8 +359,6 @@ export default function MissionsPage() {
         const pendingMission = savePendingMission(missionData);
         try {
           updatePendingMissionStatus(pendingMission.localId, "syncing");
-          console.log("🚀 MISSION DATA SENT:");
-console.log(JSON.stringify(missionData, null, 2));
           await API.post("/missions", missionData);
           removePendingMission(pendingMission.localId);
           sessionStorage.removeItem("assignedDrone");
@@ -368,9 +397,9 @@ console.log(JSON.stringify(missionData, null, 2));
       title: mission.title || "", type: mission.type || "SAR", status: mission.status || "assigned",
       payloadWeight: String(mission.payloadWeight || "0"), urgency: mission.urgency || "Low",
       startTime: mission.startTime ? mission.startTime.slice(0, 16) : "",
-     locationName: "",
-lat: String(mission.departureLocation?.lat ?? "0"),
-lng: String(mission.departureLocation?.lng ?? "0"), 
+      locationName: "",
+      lat: String(mission.departureLocation?.lat ?? "0"),
+      lng: String(mission.departureLocation?.lng ?? "0"), 
       targetArea: mission.targetArea?.name || "",
       targetLat: String(mission.targetArea?.lat ?? "0"), 
       targetLng: String(mission.targetArea?.lng ?? "0"),
@@ -383,6 +412,18 @@ lng: String(mission.departureLocation?.lng ?? "0"),
     title: "", type: "SAR", status: "assigned", payloadWeight: "0", urgency: "Low",
     startTime: "", locationName: "", lat: "", lng: "", targetArea: "", targetLat: "",
     targetLng: "", droneId: "", description: "",
+  });
+
+  // ─── Dual Context Filtering Logic ───────────────────────────────────────────
+  const filteredMissions = missions?.filter((m) => {
+    const cleanQuery = searchQuery.toLowerCase().trim();
+    if (!cleanQuery) return true;
+
+    if (searchField === "id") {
+      return m._id?.toLowerCase().includes(cleanQuery);
+    } else {
+      return m.title?.toLowerCase().includes(cleanQuery);
+    }
   });
 
   return (
@@ -451,7 +492,6 @@ lng: String(mission.departureLocation?.lng ?? "0"),
                 </h3>
                 <div className="space-y-3">
                   <Field label="Location Name"><input className={inputCls} placeholder="Base Alpha" value={form.locationName} onChange={(e) => setForm({ ...form, locationName: e.target.value })} /></Field>
-                  {/* CHANGED: Changed input type to text to allow custom formatting / negative typing freely without spinners blocking input formatting */}
                   <Field label="Latitude"><input type="text" className={inputCls} placeholder="35.6971" value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} /></Field>
                   <Field label="Longitude"><input type="text" className={inputCls} placeholder="-0.6308" value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} /></Field>
                 </div>
@@ -464,7 +504,6 @@ lng: String(mission.departureLocation?.lng ?? "0"),
                 </h3>
                 <div className="space-y-3">
                   <Field label="Target area name"><input className={inputCls} placeholder="Sector 7" value={form.targetArea} onChange={(e) => setForm({ ...form, targetArea: e.target.value })} /></Field>
-                  {/* CHANGED: Changed input type to text here too */}
                   <Field label="Target latitude"><input type="text" className={inputCls} placeholder="35.6971" value={form.targetLat} onChange={(e) => setForm({ ...form, targetLat: e.target.value })} /></Field>
                   <Field label="Target longitude"><input type="text" className={inputCls} placeholder="-0.6308" value={form.targetLng} onChange={(e) => setForm({ ...form, targetLng: e.target.value })} /></Field>
                   <p className="text-xs text-green-400/80">Mission destination coordinates.</p>
@@ -484,19 +523,52 @@ lng: String(mission.departureLocation?.lng ?? "0"),
 
       <AppShell>
         <Glass className="overflow-hidden">
-          <div className="flex items-center justify-between bg-black/40 px-6 py-4">
-            <h2 className="text-2xl font-semibold text-white/80">All missions</h2>
+          {/* ── Updated Search Bar Toolbar ── */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between bg-black/40 px-6 py-4 gap-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1 max-w-2xl">
+              <h2 className="text-2xl font-semibold text-white/80 whitespace-nowrap">All missions</h2>
+              
+              <div className="flex items-center gap-2 flex-1 w-full">
+                {/* Target Dropdown Filter */}
+             <select
+  value={searchField}
+  onChange={(e) => {
+    setSearchField(e.target.value as "id" | "title");
+    setSearchQuery(""); 
+  }}
+  className="px-3 py-2 text-sm rounded-lg border border-white/25 text-white focus:outline-none focus:border-green-400/60 transition cursor-pointer bg-white/10 backdrop-blur-md hover:bg-white/15"
+>
+  <option value="id" className="bg-[#161b26] text-white">Search ID</option>
+  <option value="title" className="bg-[#161b26] text-white">Search Title</option>
+</select>
+
+                {/* Main Dynamic Input box */}
+                <div className="relative flex-1">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <Search className="h-4 w-4 text-white/40" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder={searchField === "id" ? "Search by mission ID..." : "Search by mission title..."}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-green-400/60 focus:bg-white/10 transition"
+                  />
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={() => { setIsEditing(false); setEditingMissionId(null); resetForm(); setOpen(true); }}
-              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-emerald-400"
+              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-emerald-400 self-start xl:self-auto"
             >
               + new mission
             </button>
           </div>
 
           {/* Table header */}
-          <div className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 border-b border-white/10 bg-black/30 px-8 py-5 text-sm font-bold uppercase tracking-[0.18em] text-white/70">
-            <div>ID</div>
+          <div className="grid grid-cols-[0.6fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 border-b border-white/10 bg-black/30 px-8 py-5 text-sm font-bold uppercase tracking-[0.18em] text-white/70">
+            <div>ID / Title</div>
             <div>Type</div>
             <div>Status</div>
             <div>Payload</div>
@@ -508,52 +580,71 @@ lng: String(mission.departureLocation?.lng ?? "0"),
           </div>
 
           <ul>
-  {missions?.map((m) => (
-    <li
-      key={m._id}
-      className="grid grid-cols-[0.5fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 px-8 py-5 border-b border-white/5 hover:bg-white/[0.03] transition-all text-base"
-    >
-      <div className="font-medium text-white/80">{m._id?.slice(-5) || "N/A"}</div>
+            {filteredMissions && filteredMissions.length > 0 ? (
+              filteredMissions.map((m) => (
+                <li
+                  key={m._id}
+                  className="grid grid-cols-[0.6fr_1fr_1fr_0.8fr_1fr_1.2fr_1.2fr_1.2fr_1.4fr] items-center gap-6 px-8 py-5 border-b border-white/5 hover:bg-white/[0.03] transition-all text-base"
+                >
+                  {/* ID / Name Nested Stack Display */}
+                  <div>
+                    <div className="font-semibold text-white/90">{m._id ? m._id.slice(-5) : "N/A"}</div>
+                    {m.title && <div className="text-xs text-white/40 font-medium truncate max-w-[110px]">{m.title}</div>}
+                  </div>
 
-      <div className="font-medium text-white/90">
-        <TypeCell type={m.type} />
-      </div>
+                  <div className="font-medium text-white/90">
+                    <TypeCell type={m.type} />
+                  </div>
 
-      <div className="font-medium text-white/90">
-        <StatusPill status={m.status} />
-      </div>
+                  <div className="font-medium text-white/90">
+                    <StatusPill status={m.status} />
+                  </div>
 
-      <div className="font-medium text-white/85">{m.payloadWeight} kg</div>
+                  <div className="font-medium text-white/85">{m.payloadWeight} kg</div>
 
-      <div className="font-medium text-white/80">
-        <UrgencyPill urgency={m.urgency} />
-      </div>
+                  <div className="font-medium text-white/80">
+                    <UrgencyPill urgency={m.urgency} />
+                  </div>
 
-      <div className="font-medium text-white/80">
-        {m.startTime ? new Date(m.startTime).toLocaleString()
-          : m.startedAt ? new Date(m.startedAt).toLocaleString()
-          : m.createdAt ? new Date(m.createdAt).toLocaleString()
-          : "—"}
-      </div>
+                  <div className="font-medium text-white/80">
+                    {m.startTime ? new Date(m.startTime).toLocaleString()
+                      : m.startedAt ? new Date(m.startedAt).toLocaleString()
+                      : m.createdAt ? new Date(m.createdAt).toLocaleString()
+                      : "—"}
+                  </div>
 
-      {/* ── FIXED LOCATION CELL ── */}
-      <div className="font-medium text-white/80 truncate">
-        📍 {m.dLocation?.name ? m.dLocation.name : `${m.dLocation?.lat ?? 0}, ${m.dLocation?.lng ?? 0}`}
-      </div>
+                  {/* ── FIXED LOCATION CELL ── */}
+{/* ── FIXED LOCATION CELL ── */}
+<div className="font-medium text-white/80 truncate">
+  📍 {m.departureLocation?.name && !m.departureLocation.name.startsWith("Lat:")
+    ? m.departureLocation.name
+    : m.departureLocation?.lat 
+      ? `${Number(m.departureLocation.lat).toFixed(4)}, ${Number(m.departureLocation.lng).toFixed(4)}`
+      : "—"}
+</div>
 
-      {/* ── FIXED TARGET AREA CELL ── */}
-      <div className="font-medium text-white/80 truncate">
-        🎯 {m.targetArea?.name ? m.targetArea.name : `${m.departureLocation?.lat ?? 0}, ${m.departureLocation?.lng ?? 0}`}
-      </div>
+{/* ── FIXED TARGET AREA CELL ── */}
+<div className="font-medium text-white/80 truncate">
+  🎯 {m.targetArea?.name && !m.targetArea.name.startsWith("Lat:")
+    ? m.targetArea.name
+    : m.targetArea?.lat 
+      ? `${Number(m.targetArea.lat).toFixed(4)}, ${Number(m.targetArea.lng).toFixed(4)}`
+      : "—"}
+</div>
 
-      <div className="flex items-center justify-end gap-2">
-        <button onClick={() => handleEditMission(m)} className="rounded-xl bg-green-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-green-400 active:scale-95">Edit</button>
-        <button onClick={() => navigate(`/missions/${m._id}/history`)} className="rounded-xl bg-blue-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-blue-400 active:scale-95">History</button>
-        <button onClick={() => { setSelectedMission(m); setShowDisableModal(true); }} className="rounded-xl bg-red-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-red-400 active:scale-95">Disable</button>
-      </div>
-    </li>
-  ))}
-</ul>
+                  <div className="flex items-center justify-end gap-2">
+                    <button onClick={() => handleEditMission(m)} className="rounded-xl bg-green-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-green-400 active:scale-95">Edit</button>
+                    <button onClick={() => navigate(`/missions/${m._id}/history`)} className="rounded-xl bg-blue-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-blue-400 active:scale-95">History</button>
+                    <button onClick={() => { setSelectedMission(m); setShowDisableModal(true); }} className="rounded-xl bg-red-500/90 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-red-400 active:scale-95">Disable</button>
+                  </div>
+                </li>
+              ))
+            ) : (
+              <li className="px-8 py-12 text-center text-white/40 text-base">
+                No missions found matching current parameters.
+              </li>
+            )}
+          </ul>
         </Glass>
 
         {/* ── Disable Modal ── */}
